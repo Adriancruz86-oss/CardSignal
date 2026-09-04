@@ -35,6 +35,12 @@ type MatchResult = {
   identityLabel: string;
 };
 
+type MarketTarget = {
+  cardId?: number;
+  player?: string;
+  meta?: string;
+};
+
 const INSERTS = [
   "instant impact", "emergent", "global reach", "deep space", "decade brilliance",
   "get hyped", "dominance", "fireworks", "instant impact prizm", "rookie variation",
@@ -79,9 +85,7 @@ function extractYear(text: string) {
 
 function yearMatches(queryYear: string, titleYear: string) {
   if (!queryYear || !titleYear) return true;
-  const q = queryYear.slice(0, 4);
-  const t = titleYear.slice(0, 4);
-  return q === t;
+  return queryYear.slice(0, 4) === titleYear.slice(0, 4);
 }
 
 function extractCardNumber(text: string) {
@@ -203,8 +207,26 @@ export default function LiveMarketLayer() {
   const [selectedIdentity, setSelectedIdentity] = useState("");
   const [manual, setManual] = useState<Record<string, boolean>>({});
   const [saved, setSaved] = useState(false);
+  const [target, setTarget] = useState<MarketTarget | null>(null);
 
   const comps = useMemo(() => data?.comps ?? [], [data]);
+
+  useEffect(() => {
+    const onOpen = (event: Event) => {
+      const detail = (event as CustomEvent<MarketTarget & { query?: string }>).detail || {};
+      const nextQuery = detail.query || [detail.player, detail.meta].filter(Boolean).join(" ");
+      setTarget({ cardId: detail.cardId, player: detail.player, meta: detail.meta });
+      if (nextQuery.trim()) setQuery(nextQuery.replace(/\s*·\s*/g, " ").trim());
+      setData(null);
+      setSelectedIdentity("");
+      setManual({});
+      setSaved(false);
+      setError("");
+      setOpen(true);
+    };
+    window.addEventListener("cardsignal:open-market", onOpen as EventListener);
+    return () => window.removeEventListener("cardsignal:open-market", onOpen as EventListener);
+  }, []);
 
   const identityGroups = useMemo(() => {
     const groups = new Map<string, { key: string; label: string; comps: Comp[] }>();
@@ -222,8 +244,8 @@ export default function LiveMarketLayer() {
     if (!data) return;
     const qNumber = extractCardNumber(normalize(query));
     if (qNumber) {
-      const target = identityGroups.find((g) => g.key === `base:#${qNumber}` || g.key.endsWith(`:${qNumber}`));
-      setSelectedIdentity(target?.key ?? "");
+      const targetGroup = identityGroups.find((g) => g.key === `base:#${qNumber}` || g.key.endsWith(`:${qNumber}`));
+      setSelectedIdentity(targetGroup?.key ?? "");
     } else if (identityGroups.length === 1) {
       setSelectedIdentity(identityGroups[0].key);
     } else {
@@ -264,18 +286,84 @@ export default function LiveMarketLayer() {
 
   const useValuation = () => {
     if (!canUse || valuation.median == null) return;
-    localStorage.setItem("cardsignal-live-valuation", JSON.stringify({ query, identity: selectedIdentity, confidence, median: valuation.median, average: valuation.average, low: valuation.low, high: valuation.high, compCount: valuation.count, savedAt: new Date().toISOString() }));
-    window.dispatchEvent(new CustomEvent("cardsignal:valuation", { detail: { query, marketValue: valuation.median, confidence, compCount: valuation.count } }));
+    const savedAt = new Date().toISOString();
+    const identityLabel = identityGroups.find((group) => group.key === selectedIdentity)?.label || selectedIdentity || "Resolved card";
+    const acceptedSnapshot = accepted.map((comp) => ({ id: comp.id, title: comp.title, soldPrice: comp.soldPrice, soldDate: comp.soldDate, marketplace: comp.marketplace }));
+    const snapshot = {
+      query,
+      identity: selectedIdentity,
+      identityLabel,
+      confidence,
+      median: valuation.median,
+      average: valuation.average,
+      low: valuation.low,
+      high: valuation.high,
+      compCount: valuation.count,
+      savedAt,
+      acceptedComps: acceptedSnapshot,
+      target,
+    };
+    localStorage.setItem("cardsignal-live-valuation", JSON.stringify(snapshot));
+
+    if (target?.cardId != null || target?.player) {
+      try {
+        const raw = JSON.parse(localStorage.getItem("cardsignal-added-cards") || "[]");
+        if (Array.isArray(raw)) {
+          const updated = raw.map((card) => {
+            const sameId = target.cardId != null && Number(card.id) === Number(target.cardId);
+            const sameCard = !sameId && target.player && card.player === target.player && (!target.meta || card.meta === target.meta);
+            if (!sameId && !sameCard) return card;
+            return {
+              ...card,
+              marketValue: valuation.median,
+              liveValuation: {
+                provider: "SoldComps",
+                identity: selectedIdentity,
+                identityLabel,
+                confidence,
+                median: valuation.median,
+                average: valuation.average,
+                low: valuation.low,
+                high: valuation.high,
+                compCount: valuation.count,
+                savedAt,
+                acceptedComps: acceptedSnapshot,
+              },
+            };
+          });
+          localStorage.setItem("cardsignal-added-cards", JSON.stringify(updated));
+        }
+      } catch {}
+
+      if (target.player) {
+        try {
+          const state = JSON.parse(localStorage.getItem("cardsignal-card-detail-state") || "{}");
+          const key = `${target.player}|${target.meta || ""}`;
+          state[key] = {
+            ...(state[key] || {}),
+            marketValue: valuation.median,
+            lastScan: "live comps · just now",
+          };
+          localStorage.setItem("cardsignal-card-detail-state", JSON.stringify(state));
+        } catch {}
+      }
+
+      window.dispatchEvent(new CustomEvent("cardsignal:user-cards-changed"));
+      window.dispatchEvent(new CustomEvent("cardsignal:valuation-applied", { detail: { cardId: target.cardId, player: target.player, meta: target.meta, marketValue: valuation.median, confidence, compCount: valuation.count, savedAt } }));
+    }
+
+    window.dispatchEvent(new CustomEvent("cardsignal:valuation", { detail: { query, marketValue: valuation.median, confidence, compCount: valuation.count, target } }));
     setSaved(true);
   };
 
   return (
     <>
-      <button className="cs-live-launch" onClick={() => setOpen(true)}><span /> LIVE MARKET</button>
+      <button className="cs-live-launch" onClick={() => { setTarget(null); setOpen(true); }}><span /> LIVE MARKET</button>
       {open && <div className="cs-live-backdrop" onMouseDown={(e) => e.target === e.currentTarget && setOpen(false)}>
         <section className="cs-live-modal">
           <button className="cs-live-close" onClick={() => setOpen(false)}>×</button>
           <div className="cs-live-head"><span>REAL MARKET DATA</span><h2>Identity-aware sold comps</h2><p>CardSignal resolves the exact card identity before trusting a valuation.</p></div>
+          {target?.player && <div className="cs-live-target"><span>APPLYING TO</span><b>{target.player}</b><small>{target.meta || "Saved CardSignal card"}</small></div>}
           <form className="cs-live-search" onSubmit={search}><input value={query} onChange={(e) => setQuery(e.target.value)} /><button disabled={loading}>{loading ? "SEARCHING…" : "SEARCH SOLD COMPS"}</button></form>
           {error && <div className="cs-live-error">{error}</div>}
 
@@ -296,7 +384,7 @@ export default function LiveMarketLayer() {
               <div><span>VALUATION CONFIDENCE</span><strong className={`tone-${confidence.toLowerCase().replace(" ", "-")}`}>{confidence}</strong><small>{averageScore}% average title match</small></div>
               <div><span>ACCEPTED</span><strong>{accepted.length}</strong><small>used in valuation</small></div>
               <div><span>REJECTED</span><strong>{reviewed.length - accepted.length}</strong><small>excluded from stats</small></div>
-              <button disabled={!canUse} onClick={useValuation}>{saved ? "VALUATION SAVED" : "USE THIS VALUATION"}</button>
+              <button disabled={!canUse} onClick={useValuation}>{saved ? (target?.player ? "VALUATION APPLIED" : "VALUATION SAVED") : (target?.player ? "APPLY TO CARD" : "USE THIS VALUATION")}</button>
             </div>
             <div className="cs-live-summary">
               <div><span>FILTERED MEDIAN</span><strong>{money(valuation.median)}</strong></div><div><span>FILTERED AVERAGE</span><strong>{money(valuation.average)}</strong></div><div><span>LOW</span><strong>{money(valuation.low)}</strong></div><div><span>HIGH</span><strong>{money(valuation.high)}</strong></div><div><span>COMPS USED</span><strong>{valuation.count}</strong></div>
@@ -316,7 +404,7 @@ export default function LiveMarketLayer() {
       </div>}
       <style jsx global>{`
         .cs-live-launch{position:fixed;right:24px;bottom:24px;z-index:900;height:42px;padding:0 16px;border:1px solid rgba(65,241,155,.42);border-radius:10px;background:linear-gradient(180deg,rgba(33,193,115,.2),rgba(4,30,20,.9));color:#bfffdc;font-size:10px;font-weight:900;letter-spacing:.12em;cursor:pointer}.cs-live-launch span{display:inline-block;width:7px;height:7px;margin-right:8px;border-radius:50%;background:#4ff1a0;box-shadow:0 0 12px #4ff1a0}
-        .cs-live-backdrop{position:fixed;inset:0;z-index:1300;display:grid;place-items:center;padding:24px;background:rgba(0,7,12,.82);backdrop-filter:blur(15px)}.cs-live-modal{position:relative;width:min(1080px,96vw);max-height:92vh;overflow:auto;padding:30px;border:1px solid rgba(75,207,255,.22);border-radius:20px;background:linear-gradient(155deg,#081d2e,#04111d 62%,#061821);box-shadow:0 44px 130px rgba(0,0,0,.72);color:#effaff}.cs-live-close{position:absolute;right:18px;top:16px;width:34px;height:34px;border:1px solid rgba(102,189,224,.16);border-radius:9px;background:#071724;color:#8cabbd;font-size:24px}.cs-live-head>span,.cs-live-section span,.cs-identity-title>span{color:#51d9ff;font-size:9px;font-weight:900;letter-spacing:.16em}.cs-live-head h2{margin:7px 0 5px;font-size:31px}.cs-live-head p,.cs-identity-title p{margin:0;color:#7896a8;font-size:11px}.cs-live-search{display:grid;grid-template-columns:1fr auto;gap:10px;margin:22px 0 16px}.cs-live-search input{height:46px;border:1px solid rgba(82,190,230,.18);border-radius:10px;background:#06131f;color:#ecf9ff;padding:0 14px}.cs-live-search button,.cs-live-confidence button{border:1px solid rgba(62,241,154,.42);border-radius:10px;background:rgba(35,173,108,.14);color:#c9ffe2;font-size:9px;font-weight:900;letter-spacing:.1em;padding:0 18px}.cs-live-search button:disabled,.cs-live-confidence button:disabled{opacity:.35}.cs-live-error,.cs-live-warning{padding:12px;border:1px solid rgba(255,91,111,.24);border-radius:9px;color:#ff9daa;background:rgba(150,30,47,.09);font-size:10px}.cs-live-warning{margin-bottom:12px;border-color:rgba(255,193,88,.2);color:#e8c27a;background:rgba(180,120,20,.06)}
+        .cs-live-backdrop{position:fixed;inset:0;z-index:1300;display:grid;place-items:center;padding:24px;background:rgba(0,7,12,.82);backdrop-filter:blur(15px)}.cs-live-modal{position:relative;width:min(1080px,96vw);max-height:92vh;overflow:auto;padding:30px;border:1px solid rgba(75,207,255,.22);border-radius:20px;background:linear-gradient(155deg,#081d2e,#04111d 62%,#061821);box-shadow:0 44px 130px rgba(0,0,0,.72);color:#effaff}.cs-live-close{position:absolute;right:18px;top:16px;width:34px;height:34px;border:1px solid rgba(102,189,224,.16);border-radius:9px;background:#071724;color:#8cabbd;font-size:24px}.cs-live-head>span,.cs-live-section span,.cs-identity-title>span,.cs-live-target>span{color:#51d9ff;font-size:9px;font-weight:900;letter-spacing:.16em}.cs-live-head h2{margin:7px 0 5px;font-size:31px}.cs-live-head p,.cs-identity-title p{margin:0;color:#7896a8;font-size:11px}.cs-live-target{display:flex;align-items:center;gap:9px;margin-top:15px;padding:10px 12px;border:1px solid rgba(68,239,157,.18);border-radius:9px;background:rgba(38,180,112,.06)}.cs-live-target b{font-size:11px}.cs-live-target small{color:#6f8fa1;font-size:9px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.cs-live-search{display:grid;grid-template-columns:1fr auto;gap:10px;margin:18px 0 16px}.cs-live-search input{height:46px;border:1px solid rgba(82,190,230,.18);border-radius:10px;background:#06131f;color:#ecf9ff;padding:0 14px}.cs-live-search button,.cs-live-confidence button{border:1px solid rgba(62,241,154,.42);border-radius:10px;background:rgba(35,173,108,.14);color:#c9ffe2;font-size:9px;font-weight:900;letter-spacing:.1em;padding:0 18px}.cs-live-search button:disabled,.cs-live-confidence button:disabled{opacity:.35}.cs-live-error,.cs-live-warning{padding:12px;border:1px solid rgba(255,91,111,.24);border-radius:9px;color:#ff9daa;background:rgba(150,30,47,.09);font-size:10px}.cs-live-warning{margin-bottom:12px;border-color:rgba(255,193,88,.2);color:#e8c27a;background:rgba(180,120,20,.06)}
         .cs-identity-box{margin:14px 0 16px;padding:15px;border:1px solid rgba(76,211,255,.18);border-radius:12px;background:rgba(16,66,91,.12)}.cs-identity-title b{display:block;margin:6px 0 4px}.cs-identity-options{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-top:12px}.cs-identity-options button{padding:12px;text-align:left;border:1px solid rgba(83,184,223,.13);border-radius:9px;background:#071724;color:#dff4fd}.cs-identity-options button.selected{border-color:rgba(72,241,157,.45);background:rgba(38,180,112,.1)}.cs-identity-options strong,.cs-identity-options span,.cs-identity-options b{display:block}.cs-identity-options strong{font-size:11px}.cs-identity-options span{margin:4px 0;color:#6f8fa1;font-size:9px}.cs-identity-options b{color:#62efaa;font-size:11px}
         .cs-live-confidence{display:grid;grid-template-columns:2fr 1fr 1fr 1.5fr;gap:9px;margin-bottom:10px}.cs-live-confidence>div{padding:13px;border:1px solid rgba(74,187,229,.13);border-radius:10px;background:rgba(6,24,38,.72)}.cs-live-confidence span,.cs-live-summary span{display:block;color:#6e8fa2;font-size:8px;font-weight:900;letter-spacing:.12em}.cs-live-confidence strong,.cs-live-summary strong{display:block;margin-top:6px;font-size:18px}.cs-live-confidence small{display:block;margin-top:3px;color:#57788b;font-size:8px}.tone-exact,.tone-strong{color:#62efaa}.tone-needs-identity{color:#f0c56d}.tone-loose,.tone-no-match{color:#7ea5b8}.cs-live-summary{display:grid;grid-template-columns:repeat(5,1fr);gap:9px;margin-bottom:16px}.cs-live-summary>div{padding:13px;border:1px solid rgba(74,187,229,.13);border-radius:10px;background:rgba(6,24,38,.72)}.cs-live-summary>div:first-child strong{color:#62efaa}.cs-live-section{display:flex;justify-content:space-between;gap:20px;margin:16px 0 9px}.cs-live-section b{color:#8ca8b7;font-size:9px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
         .cs-live-comps{display:grid;gap:7px}.cs-live-comp{display:grid;grid-template-columns:34px 48px 1fr auto;align-items:center;gap:11px;padding:9px 11px;border:1px solid rgba(78,183,224,.1);border-radius:10px;background:rgba(7,24,38,.68)}.cs-live-comp.excluded{opacity:.48}.cs-live-comp.included{border-color:rgba(63,232,151,.2)}.cs-comp-toggle{width:28px;height:28px;border:1px solid rgba(70,216,255,.18);border-radius:7px;background:#061522;color:#58dda0}.cs-live-comp>img,.cs-live-thumb{width:48px;height:48px;border-radius:7px;object-fit:cover;background:#0a2030}.cs-live-thumb{display:grid;place-items:center;color:#4bcdf3;font-size:9px}.cs-live-comp-copy{min-width:0}.cs-live-comp-copy>strong{display:block;font-size:10px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.cs-live-comp-copy>span{display:block;margin-top:3px;color:#69899b;font-size:8px}.cs-live-comp-copy em{display:inline-block;margin-top:5px;font-style:normal;font-size:8px;font-weight:800}.cs-live-comp-copy small{margin-left:8px;color:#6f8491;font-size:8px}.match-exact,.match-strong{color:#59eaa0}.match-loose{color:#6fd8ff}.match-rejected{color:#ff7585}.cs-live-price b{color:#61efaa;font-size:13px}.cs-live-empty{padding:28px;border:1px dashed rgba(86,190,229,.15);border-radius:11px;color:#69899b;text-align:center;font-size:11px}.cs-live-attribution{margin-top:16px;text-align:right;color:#506f80;font-size:8px}
