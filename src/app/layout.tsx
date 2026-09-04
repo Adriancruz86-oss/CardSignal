@@ -6,6 +6,7 @@ import UserCardLayer from "./user-card-layer";
 import LiveMarketLayer from "./live-market-layer";
 import ValuationBridge from "./valuation-bridge";
 import ValuationOverride from "./valuation-override";
+import DataSourcesLayer from "./data-sources-layer";
 import "./globals.css";
 import "./asset-overrides.css";
 import "./live-market-click-fix.css";
@@ -39,6 +40,7 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
         <LiveMarketLayer />
         <ValuationBridge />
         <ValuationOverride />
+        <DataSourcesLayer />
       </body>
     </html>
   );
