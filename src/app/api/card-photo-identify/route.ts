@@ -65,10 +65,11 @@ export async function POST(request: NextRequest) {
     try { json = JSON.parse(raw); } catch {}
 
     if (!response.ok) {
+      const upstreamError = json.detail ?? json.message ?? json.error ?? raw.slice(0, 250);
       return NextResponse.json(
         {
           ok: false,
-          error: text(json.detail ?? json.message ?? json.error ?? raw.slice(0, 250) || `CardSight HTTP ${response.status}`),
+          error: text(upstreamError) || `CardSight HTTP ${response.status}`,
           code: `cardsight_${response.status}`,
         },
         { status: response.status },
