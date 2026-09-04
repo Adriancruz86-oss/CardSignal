@@ -47,16 +47,14 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ ok: false, error: "Front image is required" }, { status: 400 });
   }
 
-  const form = new FormData();
-  form.append("image", front, front.name || "card.jpg");
-
   try {
     const response = await fetch(`${BASE}/v1/identify/card`, {
       method: "POST",
       headers: {
         "X-API-Key": key,
+        "Content-Type": front.type || "image/jpeg",
       },
-      body: form,
+      body: front,
       cache: "no-store",
     });
 
@@ -78,7 +76,14 @@ export async function POST(request: NextRequest) {
 
     const detections = Array.isArray(json.detections) ? json.detections as Record<string, unknown>[] : [];
     if (!detections.length) {
-      return NextResponse.json({ ok: false, error: "CardSight did not identify a card in the front image", code: "no_detection" }, { status: 422 });
+      return NextResponse.json(
+        {
+          ok: false,
+          error: "CardSight received the image but did not identify a card. Try a tighter, straight-on crop with the full card visible.",
+          code: "no_detection",
+        },
+        { status: 422 },
+      );
     }
 
     const detection = detections[0];
