@@ -1,0 +1,61 @@
+.cs-live-modal,
+.cs-live-modal * {
+  pointer-events: auto;
+}
+
+.cs-live-modal button,
+.cs-identity-options button,
+.cs-comp-toggle {
+  cursor: pointer !important;
+  position: relative;
+  z-index: 5;
+}
+
+.cs-identity-box,
+.cs-identity-options,
+.cs-live-confidence,
+.cs-live-summary,
+.cs-live-comps {
+  position: relative;
+  z-index: 3;
+}
+
+.cs-identity-options button {
+  pointer-events: auto !important;
+  transition: border-color .15s ease, background .15s ease, transform .15s ease;
+}
+
+.cs-identity-options button:hover {
+  border-color: rgba(72,241,157,.55) !important;
+  background: rgba(38,180,112,.12) !important;
+  transform: translateY(-1px);
+}
+
+.cs-identity-options button::after {
+  content: "SELECT";
+  display: block;
+  margin-top: 7px;
+  color: #59dca0;
+  font-size: 7px;
+  font-weight: 900;
+  letter-spacing: .14em;
+  opacity: .8;
+}
+
+.cs-identity-options button.selected::after {
+  content: "SELECTED";
+  color: #80ffc0;
+}
+
+.cs-comp-toggle {
+  pointer-events: auto !important;
+}
+
+.cs-live-confidence button:not(:disabled) {
+  cursor: pointer !important;
+  box-shadow: 0 0 0 1px rgba(77,239,159,.08), 0 0 20px rgba(52,213,139,.08);
+}
+
+.cs-live-confidence button:disabled {
+  cursor: not-allowed !important;
+}
