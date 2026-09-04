@@ -6,6 +6,20 @@ type StoredCard = {
   id?: number;
   player?: string;
   meta?: string;
+  marketValue?: number;
+  liveValuation?: Record<string, unknown>;
+};
+
+type ValuationEventDetail = {
+  query?: string;
+  marketValue?: number;
+  confidence?: string;
+  compCount?: number;
+  target?: {
+    cardId?: number;
+    player?: string;
+    meta?: string;
+  } | null;
 };
 
 function readCards(): StoredCard[] {
@@ -32,6 +46,80 @@ function openMarket(player: string, meta: string) {
       query: [player, meta].filter(Boolean).join(" ").replace(/\s*·\s*/g, " "),
     },
   }));
+}
+
+function applyValuationFallback(detail: ValuationEventDetail) {
+  const target = detail.target;
+  if (!target || detail.marketValue == null) return false;
+
+  const cards = readCards();
+  if (!cards.length) return false;
+
+  let matched = false;
+  let snapshot: Record<string, unknown> = {};
+  try {
+    snapshot = JSON.parse(localStorage.getItem("cardsignal-live-valuation") || "{}");
+  } catch {}
+
+  const updated = cards.map((card) => {
+    const sameId = target.cardId != null && Number(card.id) === Number(target.cardId);
+    const sameExactCard = Boolean(target.player && card.player === target.player && target.meta && card.meta === target.meta);
+    const samePlayerFallback = Boolean(target.player && card.player === target.player);
+
+    if (!sameId && !sameExactCard && !samePlayerFallback) return card;
+    if (matched && !sameId && !sameExactCard) return card;
+
+    matched = true;
+    return {
+      ...card,
+      marketValue: Number(detail.marketValue),
+      liveValuation: {
+        provider: "SoldComps",
+        identity: snapshot.identity,
+        identityLabel: snapshot.identityLabel,
+        confidence: detail.confidence || snapshot.confidence,
+        median: Number(detail.marketValue),
+        average: snapshot.average,
+        low: snapshot.low,
+        high: snapshot.high,
+        compCount: detail.compCount ?? snapshot.compCount,
+        savedAt: snapshot.savedAt || new Date().toISOString(),
+        acceptedComps: snapshot.acceptedComps,
+      },
+    };
+  });
+
+  if (!matched) return false;
+
+  localStorage.setItem("cardsignal-added-cards", JSON.stringify(updated));
+
+  if (target.player) {
+    try {
+      const state = JSON.parse(localStorage.getItem("cardsignal-card-detail-state") || "{}");
+      const exactKey = `${target.player}|${target.meta || ""}`;
+      state[exactKey] = {
+        ...(state[exactKey] || {}),
+        marketValue: Number(detail.marketValue),
+        lastScan: "live comps · just now",
+      };
+      localStorage.setItem("cardsignal-card-detail-state", JSON.stringify(state));
+    } catch {}
+  }
+
+  window.dispatchEvent(new CustomEvent("cardsignal:user-cards-changed"));
+  window.dispatchEvent(new CustomEvent("cardsignal:valuation-applied", {
+    detail: {
+      cardId: target.cardId,
+      player: target.player,
+      meta: target.meta,
+      marketValue: Number(detail.marketValue),
+      confidence: detail.confidence,
+      compCount: detail.compCount,
+      savedAt: new Date().toISOString(),
+    },
+  }));
+
+  return true;
 }
 
 export default function ValuationBridge() {
@@ -80,6 +168,12 @@ export default function ValuationBridge() {
     const observer = new MutationObserver(enhance);
     observer.observe(document.body, { childList: true, subtree: true });
 
+    const onValuation = (event: Event) => {
+      const detail = (event as CustomEvent<ValuationEventDetail>).detail;
+      if (!detail?.target || detail.marketValue == null) return;
+      applyValuationFallback(detail);
+    };
+
     const onApplied = (event: Event) => {
       const detail = (event as CustomEvent<{ player?: string; meta?: string; marketValue?: number; savedAt?: string }>).detail;
       if (!detail?.player || detail.marketValue == null) return;
@@ -95,9 +189,11 @@ export default function ValuationBridge() {
       }
     };
 
+    window.addEventListener("cardsignal:valuation", onValuation as EventListener);
     window.addEventListener("cardsignal:valuation-applied", onApplied as EventListener);
     return () => {
       observer.disconnect();
+      window.removeEventListener("cardsignal:valuation", onValuation as EventListener);
       window.removeEventListener("cardsignal:valuation-applied", onApplied as EventListener);
     };
   }, []);
