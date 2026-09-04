@@ -4,6 +4,7 @@ import FunctionalLayer from "./functional-layer";
 import CardDetailLayer from "./card-detail-layer";
 import UserCardLayer from "./user-card-layer";
 import LiveMarketLayer from "./live-market-layer";
+import ValuationBridge from "./valuation-bridge";
 import "./globals.css";
 import "./asset-overrides.css";
 
@@ -34,6 +35,7 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
         <CardDetailLayer />
         <UserCardLayer />
         <LiveMarketLayer />
+        <ValuationBridge />
       </body>
     </html>
   );
