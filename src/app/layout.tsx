@@ -10,6 +10,7 @@ import DataSourcesLayer from "./data-sources-layer";
 import SignalLabLayer from "./signal-lab-layer";
 import SignalLabFallbackLayer from "./signal-lab-fallback-layer";
 import AddCardIdentityLayer from "./add-card-identity-layer";
+import PhotoOcrFallbackLayer from "./photo-ocr-fallback-layer";
 import "./globals.css";
 import "./asset-overrides.css";
 import "./live-market-click-fix.css";
@@ -45,6 +46,7 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
         <SignalLabLayer />
         <SignalLabFallbackLayer />
         <AddCardIdentityLayer />
+        <PhotoOcrFallbackLayer />
       </body>
     </html>
   );
