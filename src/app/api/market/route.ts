@@ -1,118 +1,121 @@
 import { NextRequest, NextResponse } from "next/server";
 
-const BASE = "https://cardpricer.co/api/v1";
+const SOLD_COMPS_BASE = "https://api.sold-comps.com/v1/scrape";
 
-type UpstreamError = Error & { status?: number; body?: string };
+type SoldComp = {
+  itemId?: string;
+  title?: string;
+  soldPrice?: number | string;
+  shippingCost?: number | string | null;
+  endedAt?: string;
+  condition?: string | null;
+  url?: string;
+  thumbnailUrl?: string | null;
+  marketplace?: string;
+};
 
-async function fetchJson(url: string) {
-  const response = await fetch(url, {
-    headers: {
-      Accept: "application/json",
-      "User-Agent": "CardSignal/0.1 (local prototype)",
-    },
-    cache: "no-store",
-  });
-
-  const text = await response.text();
-
-  if (!response.ok) {
-    const error = new Error(`CardPricer request failed (${response.status})`) as UpstreamError;
-    error.status = response.status;
-    error.body = text.slice(0, 500);
-    throw error;
-  }
-
-  try {
-    return JSON.parse(text);
-  } catch {
-    throw new Error("CardPricer returned a non-JSON response");
-  }
+function toNumber(value: unknown) {
+  const parsed = typeof value === "number" ? value : Number.parseFloat(String(value ?? ""));
+  return Number.isFinite(parsed) ? parsed : null;
 }
 
-function playerOnlyQuery(q: string) {
-  const beforeYear = q.split(/\b(?:19|20)\d{2}\b/)[0]?.trim();
-  if (beforeYear && beforeYear.length >= 3) return beforeYear;
-  return q.split(/\s+/).slice(0, 3).join(" ");
+function summary(items: SoldComp[]) {
+  const prices = items.map((item) => toNumber(item.soldPrice)).filter((value): value is number => value !== null).sort((a, b) => a - b);
+  if (!prices.length) return { count: 0, average: null, median: null, low: null, high: null };
+  const average = prices.reduce((sum, price) => sum + price, 0) / prices.length;
+  const mid = Math.floor(prices.length / 2);
+  const median = prices.length % 2 ? prices[mid] : (prices[mid - 1] + prices[mid]) / 2;
+  return {
+    count: prices.length,
+    average: Math.round(average * 100) / 100,
+    median: Math.round(median * 100) / 100,
+    low: prices[0],
+    high: prices[prices.length - 1],
+  };
 }
 
 export async function GET(request: NextRequest) {
   const { searchParams } = new URL(request.url);
   const q = searchParams.get("q")?.trim();
-  const id = searchParams.get("id")?.trim();
 
-  try {
-    if (id) {
-      const safeId = encodeURIComponent(id);
-      const [card, provenance, history] = await Promise.all([
-        fetchJson(`${BASE}/cards/${safeId}`),
-        fetchJson(`${BASE}/cards/${safeId}/provenance`).catch(() => null),
-        fetchJson(`${BASE}/cards/${safeId}/history?interval=W`).catch(() => null),
-      ]);
+  if (!q) {
+    return NextResponse.json({ ok: false, error: "Missing q" }, { status: 400 });
+  }
 
-      return NextResponse.json({
-        ok: true,
-        source: "CardPricer",
-        fetchedAt: new Date().toISOString(),
-        card,
-        provenance,
-        history,
-      });
-    }
-
-    if (!q) {
-      return NextResponse.json({ ok: false, error: "Missing q or id" }, { status: 400 });
-    }
-
-    // Keep the public search request deliberately minimal. Some upstream deployments
-    // have rejected optional sorting/filter combinations even though the directory
-    // endpoint itself is available anonymously.
-    try {
-      const url = `${BASE}/cards?q=${encodeURIComponent(q)}&limit=12`;
-      const results = await fetchJson(url);
-
-      return NextResponse.json({
-        ok: true,
-        source: "CardPricer",
-        fetchedAt: new Date().toISOString(),
-        results,
-      });
-    } catch (firstError) {
-      // Fallback: verify that the anonymous API is reachable and return matching
-      // players. The UI can still show useful live catalog data while we diagnose
-      // a card-search-specific upstream restriction.
-      const fallbackQ = playerOnlyQuery(q);
-      try {
-        const players = await fetchJson(`${BASE}/players?q=${encodeURIComponent(fallbackQ)}&limit=10`);
-        return NextResponse.json({
-          ok: true,
-          source: "CardPricer",
-          fetchedAt: new Date().toISOString(),
-          fallback: "players",
-          query: fallbackQ,
-          results: players,
-          warning: firstError instanceof Error ? firstError.message : "Card search failed; showing player matches instead.",
-        });
-      } catch (fallbackError) {
-        const upstream = fallbackError as UpstreamError;
-        return NextResponse.json(
-          {
-            ok: false,
-            error: upstream.message || "Market data request failed",
-            upstreamStatus: upstream.status ?? null,
-            upstreamBody: upstream.body ?? null,
-          },
-          { status: 502 },
-        );
-      }
-    }
-  } catch (error) {
-    const upstream = error as UpstreamError;
+  const apiKey = process.env.SOLD_COMPS_API_KEY?.trim();
+  if (!apiKey) {
     return NextResponse.json(
       {
         ok: false,
-        error: upstream.message || "Market data request failed",
-        upstreamStatus: upstream.status ?? null,
-        upstreamBody: upstream.body ?? null,
+        setupRequired: true,
+        provider: "SoldComps",
+        error: "Live sold comps need a free SoldComps API key. Add SOLD_COMPS_API_KEY to .env.local and restart the dev server.",
+      },
+      { status: 503 },
+    );
+  }
+
+  const url = `${SOLD_COMPS_BASE}?keyword=${encodeURIComponent(q)}&count=40&exactMatch=true`;
+
+  try {
+    const response = await fetch(url, {
+      headers: {
+        Accept: "application/json",
+        Authorization: `Bearer ${apiKey}`,
+        "User-Agent": "CardSignal/0.1",
+      },
+      cache: "no-store",
+    });
+
+    const text = await response.text();
+    let payload: Record<string, unknown> = {};
+    try {
+      payload = JSON.parse(text) as Record<string, unknown>;
+    } catch {
+      payload = {};
+    }
+
+    if (!response.ok) {
+      const upstreamMessage = typeof payload.error === "string" ? payload.error : typeof payload.message === "string" ? payload.message : text.slice(0, 240);
+      return NextResponse.json(
+        {
+          ok: false,
+          provider: "SoldComps",
+          error: upstreamMessage || `SoldComps request failed (${response.status})`,
+          upstreamStatus: response.status,
+        },
+        { status: 502 },
+      );
+    }
+
+    const items = Array.isArray(payload.items) ? payload.items as SoldComp[] : [];
+
+    return NextResponse.json({
+      ok: true,
+      source: "SoldComps / eBay sold listings",
+      fetchedAt: new Date().toISOString(),
+      query: q,
+      totalItems: typeof payload.totalItems === "number" ? payload.totalItems : items.length,
+      totalResults: payload.totalResults ?? null,
+      summary: summary(items),
+      comps: items.map((item) => ({
+        id: item.itemId ?? "",
+        title: item.title ?? "Untitled sold listing",
+        soldPrice: toNumber(item.soldPrice),
+        shippingCost: toNumber(item.shippingCost),
+        soldDate: item.endedAt ?? "",
+        condition: item.condition ?? "",
+        url: item.url ?? "",
+        image: item.thumbnailUrl ?? "",
+        marketplace: item.marketplace ?? "eBay",
+      })),
+    });
+  } catch (error) {
+    return NextResponse.json(
+      {
+        ok: false,
+        provider: "SoldComps",
+        error: error instanceof Error ? error.message : "Live comps request failed",
       },
       { status: 502 },
     );
