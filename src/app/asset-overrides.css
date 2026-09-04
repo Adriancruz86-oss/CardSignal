@@ -1,7 +1,7 @@
-/* Asset safety layer.
-   The generated UI sheets are source sheets for cropping, not production wallpapers.
-   Until individual crops are exported, keep them out of full-page backgrounds and
-   component sprite positions so neighboring artwork never bleeds into the UI. */
+/* CardSignal individual asset integration.
+   Production UI now references standalone crops under public/assets/cropped.
+   The original generated source sheets remain in the repo but are never rendered
+   as wallpapers or CSS sprites. */
 
 .v2-shell,
 .app-shell {
@@ -11,110 +11,195 @@
     linear-gradient(180deg, #04101a 0%, #06131f 50%, #04101a 100%) !important;
 }
 
-/* Keep the subtle coded radar until we export the radar art as its own crop. */
+/* Standalone radar crop — safe because no neighboring sheet artwork can bleed in. */
 .background-radar {
-  left: -260px !important;
-  top: 250px !important;
-  width: 560px !important;
-  height: 560px !important;
-  border: 1px solid rgba(55, 242, 154, .08) !important;
+  left: -115px !important;
+  top: 300px !important;
+  width: 360px !important;
+  height: 360px !important;
+  border: 0 !important;
   border-radius: 50% !important;
-  background-image: none !important;
-  opacity: .8 !important;
-  box-shadow:
-    0 0 0 70px rgba(55, 242, 154, .018),
-    0 0 0 145px rgba(57, 205, 255, .012) !important;
-  filter: none !important;
+  background: url('/assets/cropped/radar/radar-main-hud.png') center / contain no-repeat !important;
+  opacity: .11 !important;
+  box-shadow: none !important;
+  filter: saturate(1.08) drop-shadow(0 0 26px rgba(49, 239, 151, .18)) !important;
 }
 .background-radar::before,
-.background-radar::after {
-  display: block !important;
-}
+.background-radar::after { display: none !important; }
 
-/* Do not fake the logo by cropping a full source sheet. Use the text fallback
-   until the approved transparent logo PNG is added as a standalone file. */
+/* Brand crop replaces both the missing old logo file and the temporary text mark. */
 .v2-brand {
+  position: relative !important;
   overflow: visible !important;
-  width: 300px;
+  width: 300px !important;
+  height: 76px !important;
 }
-.brand-logo-original {
-  display: block !important;
-}
+.brand-logo-original { display: none !important; }
 .brand-fallback {
-  position: static !important;
-  width: auto !important;
-  height: auto !important;
-  font-size: 27px !important;
-  background: none !important;
-  filter: none !important;
+  position: absolute !important;
+  inset: 0 !important;
+  width: 285px !important;
+  height: 76px !important;
+  font-size: 0 !important;
+  background: url('/assets/cropped/brand/cardsignal-logo-kit.png') left center / contain no-repeat !important;
+  filter: drop-shadow(0 0 14px rgba(55, 242, 154, .18)) !important;
 }
-.brand-fallback b { color: #edf8ff; }
-.brand-fallback em { color: #47ef9a; }
 
-/* Restore clean live icons instead of inaccurate sprite coordinates. */
+/* Standalone HUD/action crops for top metric cards. */
 .stat-icon {
-  color: inherit !important;
-  background: rgba(4, 18, 29, .9) !important;
+  position: relative !important;
+  overflow: hidden !important;
+  color: transparent !important;
+  background-color: rgba(4, 18, 29, .9) !important;
+  background-repeat: no-repeat !important;
+  background-position: center !important;
+  background-size: 68% auto !important;
   border-color: rgba(81, 205, 244, .15) !important;
 }
 .stat-icon::before { display: none !important; }
+.stat-card:nth-child(1) .stat-icon { background-image: url('/assets/cropped/icons/action-trend.png') !important; }
+.stat-card:nth-child(2) .stat-icon { background-image: url('/assets/cropped/icons/action-search.png') !important; }
+.stat-card:nth-child(3) .stat-icon { background-image: url('/assets/cropped/icons/icon-up-round.png') !important; background-size: 82% auto !important; }
+.stat-card:nth-child(4) .stat-icon { background-image: url('/assets/cropped/icons/icon-warning-round.png') !important; background-size: 82% auto !important; }
 
-.radar-panel .section-title > span {
-  width: auto !important;
-  height: auto !important;
-  font-size: 20px !important;
-  background: none !important;
-  filter: none !important;
+/* Hero card gets a real isolated slab/frame crop with a separate scan overlay. */
+.v2-card-stage {
+  isolation: isolate !important;
 }
-
-.mini-card {
-  background-image: none !important;
-}
-
-.alert i {
-  background-image: none !important;
-  font-size: inherit !important;
-}
-
-.snapshot-ring {
-  background-image: none !important;
-  border: 1px solid rgba(69, 232, 166, .35) !important;
-  box-shadow: 0 0 28px rgba(70, 236, 168, .09) !important;
-  filter: none !important;
-}
-.snapshot-ring::before { display: block !important; }
-
-/* Restore the coded hero scan treatment. The actual generated frame will be
-   used once it exists as its own transparent crop. */
 .v2-card-stage::before {
-  background-image: none !important;
-  width: 255px !important;
-  height: 255px !important;
-  border: 1px solid rgba(58, 210, 255, .12) !important;
-  border-radius: 50% !important;
-  opacity: 1 !important;
-  filter: none !important;
+  content: '' !important;
+  position: absolute !important;
+  width: 292px !important;
+  height: 350px !important;
+  border: 0 !important;
+  border-radius: 0 !important;
+  background: url('/assets/cropped/scan/scan-card-frame.png') center / contain no-repeat !important;
+  opacity: .34 !important;
+  filter: saturate(1.08) drop-shadow(0 0 20px rgba(58, 210, 255, .15)) !important;
+  pointer-events: none !important;
+  z-index: 1 !important;
+}
+.v2-card-stage::after {
+  content: '' !important;
+  position: absolute !important;
+  width: 250px !important;
+  height: 335px !important;
+  background: url('/assets/cropped/cards/slab-frame-large.png') center / contain no-repeat !important;
+  opacity: .40 !important;
+  pointer-events: none !important;
+  z-index: 2 !important;
 }
 .v2-card-silhouette {
-  border: 3px solid rgba(225, 241, 247, .9) !important;
+  z-index: 3 !important;
+  border: 2px solid rgba(225, 241, 247, .82) !important;
   background: linear-gradient(160deg, #dbe8ed, #7b909c 12%, #0c1720 15%, #15354a 74%, #08141e) !important;
+  box-shadow: 0 24px 44px rgba(0,0,0,.48), 0 0 34px rgba(63,218,255,.14) !important;
 }
 .v2-card-silhouette::before { display: none !important; }
+.scan-corner { display: none !important; }
 
-.scan-corner {
-  background-image: none !important;
-  width: 36px !important;
-  height: 36px !important;
-  opacity: .6 !important;
+/* Buy / Sell / Watchlist now use individual round signal icons. */
+.radar-panel .section-title > span {
+  flex: 0 0 34px !important;
+  width: 34px !important;
+  height: 34px !important;
+  font-size: 0 !important;
+  background-position: center !important;
+  background-repeat: no-repeat !important;
+  background-size: contain !important;
+  filter: drop-shadow(0 0 8px rgba(49, 220, 255, .14)) !important;
 }
-.scan-corner.tl { border-left: 2px solid #48d8ff !important; border-top: 2px solid #48d8ff !important; }
-.scan-corner.tr { border-right: 2px solid #48d8ff !important; border-top: 2px solid #48d8ff !important; transform: none !important; }
-.scan-corner.bl { border-left: 2px solid #48d8ff !important; border-bottom: 2px solid #48d8ff !important; transform: none !important; }
-.scan-corner.br { border-right: 2px solid #48d8ff !important; border-bottom: 2px solid #48d8ff !important; transform: none !important; }
+.triple-grid .radar-panel:nth-child(1) .section-title > span { background-image: url('/assets/cropped/icons/icon-up-round.png') !important; }
+.triple-grid .radar-panel:nth-child(2) .section-title > span { background-image: url('/assets/cropped/icons/icon-down-round.png') !important; }
+.triple-grid .radar-panel:nth-child(3) .section-title > span { background-image: url('/assets/cropped/icons/icon-hold-round.png') !important; }
 
-/* Never show pieces of the source sheets as decorative strips. */
+/* Mini card texture uses a standalone crop rather than a position inside a sheet. */
+.mini-card {
+  background-image: url('/assets/cropped/cards/card-stack-hud.png') !important;
+  background-repeat: no-repeat !important;
+  background-position: center !important;
+  background-size: cover !important;
+  border-color: rgba(88, 214, 249, .24) !important;
+  box-shadow: 0 5px 14px rgba(0,0,0,.25), inset 0 0 0 1px rgba(255,255,255,.035) !important;
+}
+.mini-card::before { background: rgba(2, 13, 21, .26) !important; }
+.mini-card span { position: relative; z-index: 2; text-shadow: 0 1px 8px #00131e; }
+
+/* Alert icons use dedicated individual crops. */
+.alert i {
+  width: 34px !important;
+  height: 34px !important;
+  flex: 0 0 34px !important;
+  font-size: 0 !important;
+  border: 0 !important;
+  border-radius: 50% !important;
+  background-position: center !important;
+  background-repeat: no-repeat !important;
+  background-size: contain !important;
+}
+.alert.buy i { background-image: url('/assets/cropped/icons/icon-up-round.png') !important; }
+.alert.sell i { background-image: url('/assets/cropped/icons/icon-warning-round.png') !important; }
+.alert.info i { background-image: url('/assets/cropped/icons/icon-info-round.png') !important; }
+
+/* Market Heat uses an isolated radar crop. */
+.snapshot-ring {
+  border: 0 !important;
+  background: url('/assets/cropped/radar/radar-green.png') center / contain no-repeat !important;
+  box-shadow: none !important;
+  filter: drop-shadow(0 0 14px rgba(50, 213, 255, .13)) !important;
+}
+.snapshot-ring::before { display: none !important; }
+.snapshot-ring > div {
+  background: rgba(2, 14, 23, .70) !important;
+  border-radius: 50% !important;
+  padding: 13px !important;
+  backdrop-filter: blur(3px) !important;
+}
+
+/* Decorative panel accents also come from isolated status-bar crops. */
 .v2-top-signal::after,
 .v2-breakdown::after,
 .radar-panel::after {
-  display: none !important;
+  content: '' !important;
+  position: absolute !important;
+  pointer-events: none !important;
+  display: block !important;
+  background-repeat: no-repeat !important;
+  background-position: center !important;
+  background-size: contain !important;
+}
+.v2-top-signal::after {
+  right: 18px !important;
+  top: 12px !important;
+  width: 110px !important;
+  height: 22px !important;
+  opacity: .18 !important;
+  background-image: url('/assets/cropped/panels/status-bar-green.png') !important;
+}
+.v2-breakdown { position: relative !important; }
+.v2-breakdown::after {
+  right: 18px !important;
+  bottom: 12px !important;
+  width: 100px !important;
+  height: 22px !important;
+  opacity: .12 !important;
+  background-image: url('/assets/cropped/panels/status-bar-blue.png') !important;
+}
+.radar-panel { position: relative !important; }
+.radar-panel::after {
+  right: 12px !important;
+  bottom: 8px !important;
+  width: 70px !important;
+  height: 15px !important;
+  opacity: .09 !important;
+  background-image: url('/assets/cropped/panels/status-bar-blue.png') !important;
+}
+.triple-grid .radar-panel:nth-child(1)::after { background-image: url('/assets/cropped/panels/status-bar-green.png') !important; }
+.triple-grid .radar-panel:nth-child(2)::after { background-image: url('/assets/cropped/panels/status-bar-red.png') !important; }
+
+@media (max-width: 760px) {
+  .brand-fallback { width: 225px !important; height: 64px !important; }
+  .background-radar { opacity: .07 !important; }
+  .v2-card-stage::before { opacity: .24 !important; }
+  .v2-card-stage::after { opacity: .30 !important; }
 }
