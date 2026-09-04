@@ -86,7 +86,7 @@ export default function SignalLabLayer() {
         if (selected.variation) params.set("variant", selected.variation);
         if (selected.sport) params.set("sport", selected.sport);
       }
-      const response = await fetch(`/api/signal-lab?${params.toString()}`);
+      const response = await fetch(`/api/signal-lab-exact?${params.toString()}`);
       const json = await response.json();
       if (!response.ok || !json.ok) throw new Error(json.error || "Signal Lab request failed");
       setResult(json as Result);
