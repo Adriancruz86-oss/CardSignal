@@ -3,6 +3,7 @@ import { Geist, Geist_Mono } from "next/font/google";
 import FunctionalLayer from "./functional-layer";
 import CardDetailLayer from "./card-detail-layer";
 import UserCardLayer from "./user-card-layer";
+import LiveMarketLayer from "./live-market-layer";
 import "./globals.css";
 import "./asset-overrides.css";
 
@@ -32,6 +33,7 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
         <FunctionalLayer />
         <CardDetailLayer />
         <UserCardLayer />
+        <LiveMarketLayer />
       </body>
     </html>
   );
