@@ -8,6 +8,7 @@ import ValuationBridge from "./valuation-bridge";
 import ValuationOverride from "./valuation-override";
 import "./globals.css";
 import "./asset-overrides.css";
+import "./live-market-click-fix.css";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
