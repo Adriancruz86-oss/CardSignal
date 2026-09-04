@@ -1,235 +1,120 @@
-/* Generated-asset integration layer.
-   These rules harvest individual UI pieces from the generated CardSignal sheets
-   instead of displaying the sheets as wallpaper. Live values/text remain HTML. */
+/* Asset safety layer.
+   The generated UI sheets are source sheets for cropping, not production wallpapers.
+   Until individual crops are exported, keep them out of full-page backgrounds and
+   component sprite positions so neighboring artwork never bleeds into the UI. */
 
-/* Sheet mapping in public/assets/ui:
-   (15) branded app background
-   (16) neon UI kit
-   (17) card / frame kit
-   (18) HUD / scan kit
-*/
-
-/* Give the page a faint trace of the branded background without exposing the sheet. */
-.v2-shell {
+.v2-shell,
+.app-shell {
   background:
-    linear-gradient(180deg, rgba(2, 10, 17, .90), rgba(3, 13, 22, .97)),
-    url('/assets/ui/Generated image 1 (15).png') center top / cover fixed no-repeat !important;
+    radial-gradient(circle at 10% 18%, rgba(45, 242, 151, .08), transparent 25%),
+    radial-gradient(circle at 88% 24%, rgba(49, 191, 255, .08), transparent 28%),
+    linear-gradient(180deg, #04101a 0%, #06131f 50%, #04101a 100%) !important;
 }
 
-/* Real generated radar, kept subtle behind the live dashboard. */
+/* Keep the subtle coded radar until we export the radar art as its own crop. */
 .background-radar {
-  left: -90px !important;
-  top: 285px !important;
-  width: 320px !important;
-  height: 320px !important;
-  border: 0 !important;
-  border-radius: 50%;
-  background-image: url('/assets/ui/Generated image 1 (16).png') !important;
-  background-repeat: no-repeat !important;
-  background-size: 1384px 1028px !important;
-  background-position: -842px -265px !important;
-  opacity: .12 !important;
-  box-shadow: none !important;
-  filter: saturate(1.1) drop-shadow(0 0 22px rgba(49, 239, 151, .16));
+  left: -260px !important;
+  top: 250px !important;
+  width: 560px !important;
+  height: 560px !important;
+  border: 1px solid rgba(55, 242, 154, .08) !important;
+  border-radius: 50% !important;
+  background-image: none !important;
+  opacity: .8 !important;
+  box-shadow:
+    0 0 0 70px rgba(55, 242, 154, .018),
+    0 0 0 145px rgba(57, 205, 255, .012) !important;
+  filter: none !important;
 }
 .background-radar::before,
-.background-radar::after { display: none !important; }
-
-/* Generated logo crop from the branded background while the transparent logo file is absent. */
-.v2-brand { overflow: hidden !important; width: 300px; }
-.brand-logo-original { display: none !important; }
-.brand-fallback {
-  position: absolute;
-  inset: 0;
-  width: 300px;
-  height: 76px;
-  font-size: 0 !important;
-  background-image: url('/assets/ui/Generated image 1 (15).png');
-  background-repeat: no-repeat;
-  background-size: 640px auto;
-  background-position: 0 -4px;
-  filter: drop-shadow(0 0 13px rgba(59, 239, 154, .16));
+.background-radar::after {
+  display: block !important;
 }
 
-/* Asset-backed stat icons. The actual metric values stay live HTML. */
+/* Do not fake the logo by cropping a full source sheet. Use the text fallback
+   until the approved transparent logo PNG is added as a standalone file. */
+.v2-brand {
+  overflow: visible !important;
+  width: 300px;
+}
+.brand-logo-original {
+  display: block !important;
+}
+.brand-fallback {
+  position: static !important;
+  width: auto !important;
+  height: auto !important;
+  font-size: 27px !important;
+  background: none !important;
+  filter: none !important;
+}
+.brand-fallback b { color: #edf8ff; }
+.brand-fallback em { color: #47ef9a; }
+
+/* Restore clean live icons instead of inaccurate sprite coordinates. */
 .stat-icon {
-  position: relative;
-  overflow: hidden;
-  color: transparent !important;
+  color: inherit !important;
   background: rgba(4, 18, 29, .9) !important;
   border-color: rgba(81, 205, 244, .15) !important;
 }
-.stat-icon::before {
-  content: '';
-  position: absolute;
-  inset: 0;
-  background-image: url('/assets/ui/Generated image 1 (18).png');
-  background-repeat: no-repeat;
-  background-size: 768px 512px;
-  filter: saturate(1.15);
-}
-.stat-card:nth-child(1) .stat-icon::before { background-position: -225px -347px; } /* graph */
-.stat-card:nth-child(2) .stat-icon::before { background-position: -142px -347px; } /* search */
-.stat-card:nth-child(3) .stat-icon::before { background-position: -510px -182px; } /* up signal */
-.stat-card:nth-child(4) .stat-icon::before { background-position: -686px -216px; } /* warning */
+.stat-icon::before { display: none !important; }
 
-/* Replace the CSS-only hero slab frame with the generated metallic card frame. */
+.radar-panel .section-title > span {
+  width: auto !important;
+  height: auto !important;
+  font-size: 20px !important;
+  background: none !important;
+  filter: none !important;
+}
+
+.mini-card {
+  background-image: none !important;
+}
+
+.alert i {
+  background-image: none !important;
+  font-size: inherit !important;
+}
+
+.snapshot-ring {
+  background-image: none !important;
+  border: 1px solid rgba(69, 232, 166, .35) !important;
+  box-shadow: 0 0 28px rgba(70, 236, 168, .09) !important;
+  filter: none !important;
+}
+.snapshot-ring::before { display: block !important; }
+
+/* Restore the coded hero scan treatment. The actual generated frame will be
+   used once it exists as its own transparent crop. */
 .v2-card-stage::before {
-  content: '' !important;
-  position: absolute !important;
-  width: 278px !important;
-  height: 278px !important;
-  border: 0 !important;
+  background-image: none !important;
+  width: 255px !important;
+  height: 255px !important;
+  border: 1px solid rgba(58, 210, 255, .12) !important;
   border-radius: 50% !important;
-  background-image: url('/assets/ui/Generated image 1 (18).png') !important;
-  background-repeat: no-repeat !important;
-  background-size: 1536px 1024px !important;
-  background-position: -525px -365px !important;
-  opacity: .22 !important;
-  box-shadow: none !important;
-  filter: saturate(1.15) drop-shadow(0 0 24px rgba(50, 219, 255, .15));
+  opacity: 1 !important;
+  filter: none !important;
 }
 .v2-card-silhouette {
-  overflow: hidden !important;
-  isolation: isolate;
-  background: #071522 !important;
-  border: 0 !important;
-  box-shadow: 0 24px 44px rgba(0,0,0,.48), 0 0 34px rgba(63,218,255,.13) !important;
+  border: 3px solid rgba(225, 241, 247, .9) !important;
+  background: linear-gradient(160deg, #dbe8ed, #7b909c 12%, #0c1720 15%, #15354a 74%, #08141e) !important;
 }
-.v2-card-silhouette::before {
-  content: '';
-  position: absolute;
-  inset: -3px;
-  z-index: 5;
-  pointer-events: none;
-  background-image: url('/assets/ui/Generated image 1 (17).png');
-  background-repeat: no-repeat;
-  background-size: 1253px 835px;
-  background-position: -928px -365px;
-  opacity: .92;
-}
-.v2-card-silhouette > * { position: relative; z-index: 3; }
-.v2-card-silhouette .card-grade { margin: 3px 3px 0; }
-.v2-card-silhouette .player-mark { margin-inline: 5px; }
-.v2-card-silhouette .card-caption { margin: 0 5px 4px; }
+.v2-card-silhouette::before { display: none !important; }
 
-/* Harvest the scan corners from the HUD sheet instead of drawing plain L borders. */
 .scan-corner {
-  width: 42px !important;
-  height: 42px !important;
-  border: 0 !important;
-  background-image: url('/assets/ui/Generated image 1 (18).png');
-  background-repeat: no-repeat;
-  background-size: 768px 512px;
-  background-position: -592px -400px;
-  opacity: .62 !important;
-  filter: drop-shadow(0 0 7px rgba(65, 218, 255, .32));
+  background-image: none !important;
+  width: 36px !important;
+  height: 36px !important;
+  opacity: .6 !important;
 }
-.scan-corner.tr { transform: rotate(90deg); }
-.scan-corner.br { transform: rotate(180deg); }
-.scan-corner.bl { transform: rotate(270deg); }
+.scan-corner.tl { border-left: 2px solid #48d8ff !important; border-top: 2px solid #48d8ff !important; }
+.scan-corner.tr { border-right: 2px solid #48d8ff !important; border-top: 2px solid #48d8ff !important; transform: none !important; }
+.scan-corner.bl { border-left: 2px solid #48d8ff !important; border-bottom: 2px solid #48d8ff !important; transform: none !important; }
+.scan-corner.br { border-right: 2px solid #48d8ff !important; border-bottom: 2px solid #48d8ff !important; transform: none !important; }
 
-/* Radar section icons now come from the generated sheet. */
-.radar-panel .section-title > span {
-  flex: 0 0 auto;
-  width: 34px;
-  height: 34px;
-  font-size: 0 !important;
-  background-image: url('/assets/ui/Generated image 1 (18).png');
-  background-repeat: no-repeat;
-  background-size: 768px 512px;
-  border-radius: 50%;
-  filter: drop-shadow(0 0 7px rgba(49, 220, 255, .15));
-}
-.triple-grid .radar-panel:nth-child(1) .section-title > span { background-position: -514px -183px; }
-.triple-grid .radar-panel:nth-child(2) .section-title > span { background-position: -688px -215px; }
-.triple-grid .radar-panel:nth-child(3) .section-title > span { background-position: -555px -218px; }
-
-/* Use the generated card-stack artwork as the miniature card texture. */
-.mini-card {
-  background-image: url('/assets/ui/Generated image 1 (18).png') !important;
-  background-repeat: no-repeat !important;
-  background-size: 420px 280px !important;
-  background-position: -5px -100px !important;
-  border-color: rgba(88, 214, 249, .24) !important;
-  box-shadow: 0 5px 14px rgba(0,0,0,.25), inset 0 0 0 1px rgba(255,255,255,.035) !important;
-}
-.mini-card::before { background: rgba(2, 13, 21, .34) !important; }
-.mini-card span { text-shadow: 0 1px 8px #00131e; }
-
-/* Alert markers use generated bell / warning / info icons. */
-.alert i {
-  width: 34px !important;
-  height: 34px !important;
-  flex: 0 0 34px;
-  font-size: 0 !important;
-  background-image: url('/assets/ui/Generated image 1 (18).png') !important;
-  background-repeat: no-repeat !important;
-  background-size: 768px 512px !important;
-  border: 0 !important;
-  border-radius: 50%;
-}
-.alert.buy i { background-position: -638px -217px !important; }
-.alert.sell i { background-position: -687px -216px !important; }
-.alert.info i { background-position: -729px -216px !important; }
-
-/* The market heat ring gets a real generated circular HUD treatment. */
-.snapshot-ring {
-  border: 0 !important;
-  background-image: url('/assets/ui/Generated image 1 (16).png') !important;
-  background-repeat: no-repeat !important;
-  background-size: 692px 514px !important;
-  background-position: -520px -138px !important;
-  box-shadow: none !important;
-  filter: drop-shadow(0 0 14px rgba(50, 213, 255, .13));
-}
-.snapshot-ring::before { display: none !important; }
-.snapshot-ring > div {
-  background: rgba(2, 14, 23, .68);
-  border-radius: 50%;
-  padding: 13px;
-  backdrop-filter: blur(3px);
-}
-
-/* Generated decorative tech strips inside primary panels. */
+/* Never show pieces of the source sheets as decorative strips. */
 .v2-top-signal::after,
 .v2-breakdown::after,
 .radar-panel::after {
-  content: '';
-  position: absolute;
-  pointer-events: none;
-  opacity: .24;
-  background-image: url('/assets/ui/Generated image 1 (16).png');
-  background-repeat: no-repeat;
-  background-size: 692px 514px;
-}
-.v2-top-signal::after {
-  right: 12px;
-  top: 10px;
-  width: 118px;
-  height: 18px;
-  background-position: -299px -396px;
-}
-.v2-breakdown { position: relative; }
-.v2-breakdown::after {
-  right: 12px;
-  bottom: 10px;
-  width: 86px;
-  height: 18px;
-  background-position: -307px -423px;
-}
-.radar-panel { position: relative; }
-.radar-panel::after {
-  right: 10px;
-  bottom: 8px;
-  width: 74px;
-  height: 13px;
-  background-position: -411px -493px;
-  opacity: .13;
-}
-
-@media (max-width: 760px) {
-  .brand-fallback { background-size: 520px auto; background-position: 0 -3px; }
-  .background-radar { opacity: .07 !important; }
-  .v2-card-silhouette::before { opacity: .78; }
+  display: none !important;
 }
