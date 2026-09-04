@@ -8,6 +8,8 @@ import ValuationBridge from "./valuation-bridge";
 import ValuationOverride from "./valuation-override";
 import DataSourcesLayer from "./data-sources-layer";
 import SignalLabLayer from "./signal-lab-layer";
+import SignalLabFallbackLayer from "./signal-lab-fallback-layer";
+import AddCardIdentityLayer from "./add-card-identity-layer";
 import "./globals.css";
 import "./asset-overrides.css";
 import "./live-market-click-fix.css";
@@ -30,10 +32,7 @@ export const metadata: Metadata = {
 
 export default function RootLayout({ children }: LayoutProps<"/">) {
   return (
-    <html
-      lang="en"
-      className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
-    >
+    <html lang="en" className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}>
       <body className="min-h-full flex flex-col">
         {children}
         <FunctionalLayer />
@@ -44,6 +43,8 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
         <ValuationOverride />
         <DataSourcesLayer />
         <SignalLabLayer />
+        <SignalLabFallbackLayer />
+        <AddCardIdentityLayer />
       </body>
     </html>
   );
