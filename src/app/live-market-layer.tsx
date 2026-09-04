@@ -1,6 +1,6 @@
 "use client";
 
-import { FormEvent, useMemo, useState } from "react";
+import { FormEvent, useEffect, useMemo, useState } from "react";
 
 type Comp = {
   id: string;
@@ -24,142 +24,174 @@ type MarketResponse = {
   setupRequired?: boolean;
 };
 
-type MatchBand = "Exact" | "Strong" | "Loose" | "Rejected";
+type MatchLabel = "Exact" | "Strong" | "Loose" | "Rejected";
 
-type ScoredComp = Comp & {
-  matchScore: number;
-  band: MatchBand;
-  reason: string;
-  defaultIncluded: boolean;
+type MatchResult = {
+  score: number;
+  label: MatchLabel;
+  rejected: boolean;
+  reasons: string[];
+  identityKey: string;
+  identityLabel: string;
 };
 
-const INSERT_TERMS = [
-  "instant impact", "emergent", "global reach", "deca brilliance", "deep space",
-  "dominance", "fireworks", "get hyped", "luck of the lottery", "rookie revolution",
-  "stock attack", "hoops premium", "monopoly", "breakaway", "green wave", "ice",
+const INSERTS = [
+  "instant impact", "emergent", "global reach", "deep space", "decade brilliance",
+  "get hyped", "dominance", "fireworks", "instant impact prizm", "rookie variation",
+  "sensational signatures", "penmanship", "luck of the lottery", "fearless", "throwback",
 ];
 
-const VARIANT_TERMS = [
-  "silver", "refractor", "gold", "green", "red", "blue", "orange", "purple", "pink",
-  "wave", "shimmer", "scope", "holo", "optic", "prizm", "chrome", "auto", "autograph",
-  "numbered", "rookie", "rc", "base",
-];
+const SET_WORDS = ["prizm", "select", "optic", "mosaic", "topps chrome", "bowman chrome", "hoops premium stock"];
+const VARIANTS = ["silver", "refractor", "holo", "hyper", "red", "blue", "green", "purple", "gold", "orange", "pink", "wave", "ice", "cracked ice", "scope", "shimmer", "auto", "autograph"];
+
+function normalize(value: string) {
+  return value.toLowerCase().replace(/[–—]/g, "-").replace(/[^a-z0-9#/+.-]+/g, " ").replace(/\s+/g, " ").trim();
+}
 
 function money(value: number | null | undefined) {
   return value == null ? "—" : `$${value.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 }
 
-function normalize(value: string) {
-  return value.toLowerCase().replace(/[^a-z0-9#]+/g, " ").replace(/\s+/g, " ").trim();
+function median(values: number[]) {
+  if (!values.length) return null;
+  const sorted = [...values].sort((a, b) => a - b);
+  const mid = Math.floor(sorted.length / 2);
+  return sorted.length % 2 ? sorted[mid] : (sorted[mid - 1] + sorted[mid]) / 2;
 }
 
-function words(value: string) {
-  return normalize(value).split(" ").filter((word) => word.length > 1);
-}
-
-function extractYear(value: string) {
-  return normalize(value).match(/\b(?:19|20)\d{2}(?:\s?24)?\b/)?.[0] ?? "";
-}
-
-function extractGrader(value: string) {
-  return normalize(value).match(/\b(psa|bgs|sgc|cgc)\b/)?.[1]?.toUpperCase() ?? "";
-}
-
-function extractGrade(value: string) {
-  const match = normalize(value).match(/\b(?:psa|bgs|sgc|cgc)\s*(10|9\.5|9|8\.5|8|7\.5|7)\b/);
-  return match?.[1] ?? "";
-}
-
-function extractCardNumber(value: string) {
-  const clean = normalize(value);
-  const explicit = clean.match(/#\s*([a-z0-9-]+)/)?.[1];
-  if (explicit) return explicit;
-  const card = clean.match(/\b(?:card|no|number)\s*#?\s*([a-z0-9-]+)\b/)?.[1];
-  return card ?? "";
-}
-
-function titleCardNumber(value: string) {
-  const clean = normalize(value);
-  return clean.match(/#\s*([a-z0-9-]+)/)?.[1] ?? "";
-}
-
-function scoreComp(query: string, comp: Comp): ScoredComp {
-  const q = normalize(query);
-  const t = normalize(comp.title);
-  const queryWords = words(query).filter((word) => !["panini", "card", "the", "and"].includes(word));
-  const titleSet = new Set(words(comp.title));
-
-  let score = 0;
-  const notes: string[] = [];
-  let hardReject = false;
-
-  const tokenMatches = queryWords.filter((word) => titleSet.has(word)).length;
-  score += queryWords.length ? Math.round((tokenMatches / queryWords.length) * 44) : 0;
-
-  const qYear = extractYear(query);
-  const tYear = extractYear(comp.title);
-  if (qYear) {
-    if (t.includes(qYear.slice(0, 4))) { score += 12; notes.push("year"); }
-    else if (tYear) { hardReject = true; notes.push("wrong year"); }
-  }
-
-  const qGrader = extractGrader(query);
-  const tGrader = extractGrader(comp.title);
-  if (qGrader) {
-    if (tGrader === qGrader) { score += 10; notes.push(qGrader); }
-    else if (tGrader) { hardReject = true; notes.push(`wrong grader ${tGrader}`); }
-    else { score -= 8; notes.push("grader unclear"); }
-  }
-
-  const qGrade = extractGrade(query);
-  const tGrade = extractGrade(comp.title);
-  if (qGrade) {
-    if (tGrade === qGrade) { score += 10; notes.push(`grade ${qGrade}`); }
-    else if (tGrade) { hardReject = true; notes.push(`wrong grade ${tGrade}`); }
-    else { score -= 7; notes.push("grade unclear"); }
-  }
-
-  const qNumber = extractCardNumber(query);
-  const tNumber = titleCardNumber(comp.title);
-  if (qNumber) {
-    if (tNumber === qNumber) { score += 16; notes.push(`#${qNumber}`); }
-    else if (tNumber) { hardReject = true; notes.push(`wrong #${tNumber}`); }
-    else { score -= 12; notes.push("card # unclear"); }
-  }
-
-  const qVariants = VARIANT_TERMS.filter((term) => q.includes(term));
-  const matchedVariants = qVariants.filter((term) => t.includes(term));
-  if (qVariants.length) {
-    score += Math.round((matchedVariants.length / qVariants.length) * 12);
-    if (matchedVariants.length < qVariants.length) notes.push("variant incomplete");
-  }
-
-  const conflictingInsert = INSERT_TERMS.find((term) => t.includes(term) && !q.includes(term));
-  if (conflictingInsert) {
-    hardReject = true;
-    notes.push(`different insert: ${conflictingInsert}`);
-  }
-
-  score = Math.max(0, Math.min(100, score));
-  let band: MatchBand = hardReject ? "Rejected" : score >= 88 ? "Exact" : score >= 70 ? "Strong" : score >= 54 ? "Loose" : "Rejected";
-  if (comp.soldPrice == null) band = "Rejected";
-
+function stats(comps: Comp[]) {
+  const prices = comps.map((c) => c.soldPrice).filter((v): v is number => v != null).sort((a, b) => a - b);
+  if (!prices.length) return { count: 0, median: null, average: null, low: null, high: null };
   return {
-    ...comp,
-    matchScore: score,
-    band,
-    reason: notes.slice(0, 3).join(" · ") || `${tokenMatches}/${queryWords.length} query terms`,
-    defaultIncluded: band === "Exact" || band === "Strong",
+    count: prices.length,
+    median: median(prices),
+    average: prices.reduce((a, b) => a + b, 0) / prices.length,
+    low: prices[0],
+    high: prices[prices.length - 1],
   };
 }
 
-function calcSummary(items: ScoredComp[]) {
-  const prices = items.map((item) => item.soldPrice).filter((value): value is number => value != null).sort((a, b) => a - b);
-  if (!prices.length) return { count: 0, median: null as number | null, average: null as number | null, low: null as number | null, high: null as number | null };
-  const mid = Math.floor(prices.length / 2);
-  const median = prices.length % 2 ? prices[mid] : (prices[mid - 1] + prices[mid]) / 2;
-  const average = prices.reduce((sum, value) => sum + value, 0) / prices.length;
-  return { count: prices.length, median: Math.round(median * 100) / 100, average: Math.round(average * 100) / 100, low: prices[0], high: prices[prices.length - 1] };
+function extractYear(text: string) {
+  const match = text.match(/\b((?:19|20)\d{2})(?:-(\d{2,4}))?\b/);
+  if (!match) return "";
+  return match[2] ? `${match[1]}-${match[2].slice(-2)}` : match[1];
+}
+
+function yearMatches(queryYear: string, titleYear: string) {
+  if (!queryYear || !titleYear) return true;
+  const q = queryYear.slice(0, 4);
+  const t = titleYear.slice(0, 4);
+  return q === t;
+}
+
+function extractCardNumber(text: string) {
+  const direct = text.match(/#\s*(\d{1,4})\b/);
+  if (direct) return direct[1];
+  const card = text.match(/\bcard\s*#?\s*(\d{1,4})\b/);
+  return card?.[1] ?? "";
+}
+
+function extractSerial(text: string) {
+  const match = text.match(/(?:^|\s)\/(\d{2,4})\b/);
+  return match?.[1] ?? "";
+}
+
+function findPhrase(text: string, phrases: string[]) {
+  return phrases.find((phrase) => text.includes(phrase)) ?? "";
+}
+
+function queryPlayerTokens(query: string) {
+  const n = normalize(query);
+  const beforeYear = n.split(/\b(?:19|20)\d{2}/)[0].trim();
+  return beforeYear.split(" ").filter((token) => token.length > 1).slice(0, 3);
+}
+
+function describeIdentity(title: string) {
+  const n = normalize(title);
+  const insert = findPhrase(n, INSERTS);
+  const number = extractCardNumber(n);
+  if (insert) return { key: `insert:${insert}:${number || "?"}`, label: `${insert.replace(/\b\w/g, (c) => c.toUpperCase())}${number ? ` #${number}` : ""}` };
+  if (number) return { key: `base:#${number}`, label: `Base / main set #${number}` };
+  return { key: "base:unknown", label: "Base / main set (number not shown)" };
+}
+
+function matchComp(query: string, comp: Comp, selectedIdentity: string): MatchResult {
+  const q = normalize(query);
+  const t = normalize(comp.title);
+  const reasons: string[] = [];
+  let score = 0;
+  let rejected = false;
+
+  const playerTokens = queryPlayerTokens(query);
+  const playerHits = playerTokens.filter((token) => t.includes(token)).length;
+  if (playerTokens.length && playerHits === playerTokens.length) score += 35;
+  else { rejected = true; reasons.push("player mismatch"); }
+
+  const qYear = extractYear(q);
+  const tYear = extractYear(t);
+  if (qYear && tYear) {
+    if (yearMatches(qYear, tYear)) score += 10;
+    else { rejected = true; reasons.push("year mismatch"); }
+  }
+
+  const qSet = findPhrase(q, SET_WORDS);
+  if (qSet) {
+    if (t.includes(qSet)) score += 15;
+    else { rejected = true; reasons.push("different product/set"); }
+  }
+
+  const qVariant = findPhrase(q, VARIANTS);
+  if (qVariant) {
+    if (t.includes(qVariant)) score += 15;
+    else { rejected = true; reasons.push("parallel/variant mismatch"); }
+  }
+
+  const qInsert = findPhrase(q, INSERTS);
+  const tInsert = findPhrase(t, INSERTS);
+  if (!qInsert && tInsert) { rejected = true; reasons.push(`different insert: ${tInsert}`); }
+  else if (qInsert) {
+    if (tInsert === qInsert) score += 12;
+    else { rejected = true; reasons.push("insert mismatch"); }
+  }
+
+  const qSerial = extractSerial(q);
+  const tSerial = extractSerial(t);
+  if (!qSerial && tSerial) { rejected = true; reasons.push(`numbered parallel /${tSerial}`); }
+  else if (qSerial && qSerial !== tSerial) { rejected = true; reasons.push("serial-number mismatch"); }
+
+  const qNumber = extractCardNumber(q);
+  const tNumber = extractCardNumber(t);
+  if (qNumber) {
+    if (tNumber === qNumber) score += 13;
+    else if (tNumber) { rejected = true; reasons.push(`card #${tNumber}, not #${qNumber}`); }
+    else reasons.push("card number not shown");
+  }
+
+  const grader = ["psa", "bgs", "sgc", "cgc"].find((g) => q.includes(g));
+  if (grader) {
+    if (t.includes(grader)) score += 7;
+    else { rejected = true; reasons.push("grader mismatch"); }
+  }
+
+  const gradeMatch = q.match(/\b(?:psa|bgs|sgc|cgc)\s*(10|9(?:\.5)?|8(?:\.5)?|7(?:\.5)?)\b/);
+  if (gradeMatch) {
+    const gradePattern = new RegExp(`\\b(?:psa|bgs|sgc|cgc)\\s*${gradeMatch[1].replace(".", "\\.")}\\b`);
+    if (gradePattern.test(t)) score += 8;
+    else { rejected = true; reasons.push(`grade ${gradeMatch[1]} mismatch`); }
+  }
+
+  const identity = describeIdentity(comp.title);
+  if (selectedIdentity && identity.key !== selectedIdentity) {
+    rejected = true;
+    reasons.push("different card identity");
+  }
+
+  let label: MatchLabel = "Loose";
+  if (rejected) label = "Rejected";
+  else if (score >= 88 && (Boolean(qNumber) || Boolean(selectedIdentity))) label = "Exact";
+  else if (score >= 72) label = "Strong";
+
+  return { score: Math.min(100, score), label, rejected, reasons, identityKey: identity.key, identityLabel: identity.label };
 }
 
 export default function LiveMarketLayer() {
@@ -167,117 +199,128 @@ export default function LiveMarketLayer() {
   const [query, setQuery] = useState("Victor Wembanyama 2023 Prizm Silver PSA 10");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
-  const [setupRequired, setSetupRequired] = useState(false);
   const [data, setData] = useState<MarketResponse | null>(null);
-  const [overrides, setOverrides] = useState<Record<string, boolean>>({});
+  const [selectedIdentity, setSelectedIdentity] = useState("");
+  const [manual, setManual] = useState<Record<string, boolean>>({});
   const [saved, setSaved] = useState(false);
 
-  const scored = useMemo(() => (data?.comps ?? []).map((comp) => scoreComp(data?.query || query, comp)), [data, query]);
-  const included = useMemo(() => scored.filter((comp, index) => overrides[comp.id || String(index)] ?? comp.defaultIncluded), [scored, overrides]);
-  const summary = useMemo(() => calcSummary(included), [included]);
-  const rejectedCount = scored.length - included.length;
-  const avgMatch = included.length ? Math.round(included.reduce((sum, item) => sum + item.matchScore, 0) / included.length) : 0;
-  const confidence: MatchBand = included.length >= 3 && avgMatch >= 88 ? "Exact" : included.length >= 3 && avgMatch >= 70 ? "Strong" : included.length ? "Loose" : "Rejected";
-  const usable = (confidence === "Exact" || confidence === "Strong") && included.length >= 3 && summary.median != null;
+  const comps = useMemo(() => data?.comps ?? [], [data]);
+
+  const identityGroups = useMemo(() => {
+    const groups = new Map<string, { key: string; label: string; comps: Comp[] }>();
+    comps.forEach((comp) => {
+      const baseMatch = matchComp(query, comp, "");
+      if (baseMatch.rejected) return;
+      const found = groups.get(baseMatch.identityKey) ?? { key: baseMatch.identityKey, label: baseMatch.identityLabel, comps: [] };
+      found.comps.push(comp);
+      groups.set(baseMatch.identityKey, found);
+    });
+    return [...groups.values()].sort((a, b) => b.comps.length - a.comps.length);
+  }, [comps, query]);
+
+  useEffect(() => {
+    if (!data) return;
+    const qNumber = extractCardNumber(normalize(query));
+    if (qNumber) {
+      const target = identityGroups.find((g) => g.key === `base:#${qNumber}` || g.key.endsWith(`:${qNumber}`));
+      setSelectedIdentity(target?.key ?? "");
+    } else if (identityGroups.length === 1) {
+      setSelectedIdentity(identityGroups[0].key);
+    } else {
+      setSelectedIdentity("");
+    }
+  }, [data, identityGroups, query]);
+
+  const reviewed = useMemo(() => comps.map((comp, index) => {
+    const key = comp.id || `${index}:${comp.title}`;
+    const result = matchComp(query, comp, selectedIdentity);
+    const defaultIncluded = !result.rejected && (selectedIdentity ? result.identityKey === selectedIdentity : identityGroups.length <= 1);
+    const included = manual[key] ?? defaultIncluded;
+    return { comp, key, result, included };
+  }), [comps, query, selectedIdentity, identityGroups.length, manual]);
+
+  const accepted = reviewed.filter((r) => r.included).map((r) => r.comp);
+  const valuation = useMemo(() => stats(accepted), [accepted]);
+  const acceptedMatches = reviewed.filter((r) => r.included);
+  const averageScore = acceptedMatches.length ? Math.round(acceptedMatches.reduce((sum, r) => sum + r.result.score, 0) / acceptedMatches.length) : 0;
+  const confidence = !selectedIdentity && identityGroups.length > 1 ? "Needs identity" : accepted.length >= 3 && averageScore >= 88 ? "Exact" : accepted.length >= 3 && averageScore >= 72 ? "Strong" : accepted.length ? "Loose" : "No match";
+  const canUse = accepted.length >= 3 && (confidence === "Exact" || confidence === "Strong");
 
   const search = async (event?: FormEvent) => {
     event?.preventDefault();
     if (!query.trim()) return;
-    setLoading(true); setError(""); setSetupRequired(false); setData(null); setOverrides({}); setSaved(false);
+    setLoading(true); setError(""); setData(null); setSelectedIdentity(""); setManual({}); setSaved(false);
     try {
       const response = await fetch(`/api/market?q=${encodeURIComponent(query.trim())}`);
       const json = await response.json() as MarketResponse;
-      if (!response.ok || !json.ok) { setSetupRequired(Boolean(json.setupRequired)); throw new Error(json.error || "Live comp search failed"); }
+      if (!response.ok || !json.ok) throw new Error(json.error || "Live comp search failed");
       setData(json);
-    } catch (err) { setError(err instanceof Error ? err.message : "Live comp search failed"); }
-    finally { setLoading(false); }
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Live comp search failed");
+    } finally { setLoading(false); }
   };
 
-  const toggle = (comp: ScoredComp, index: number) => {
-    const key = comp.id || String(index);
-    const current = overrides[key] ?? comp.defaultIncluded;
-    setOverrides((previous) => ({ ...previous, [key]: !current }));
-    setSaved(false);
-  };
+  const toggle = (key: string, current: boolean) => setManual((prev) => ({ ...prev, [key]: !current }));
 
   const useValuation = () => {
-    if (!usable || summary.median == null) return;
-    const valuation = {
-      query: data?.query || query,
-      median: summary.median,
-      average: summary.average,
-      low: summary.low,
-      high: summary.high,
-      compCount: summary.count,
-      confidence,
-      matchScore: avgMatch,
-      savedAt: new Date().toISOString(),
-    };
-    localStorage.setItem("cardsignal-live-valuation", JSON.stringify(valuation));
-    window.dispatchEvent(new CustomEvent("cardsignal:valuation", { detail: valuation }));
+    if (!canUse || valuation.median == null) return;
+    localStorage.setItem("cardsignal-live-valuation", JSON.stringify({ query, identity: selectedIdentity, confidence, median: valuation.median, average: valuation.average, low: valuation.low, high: valuation.high, compCount: valuation.count, savedAt: new Date().toISOString() }));
+    window.dispatchEvent(new CustomEvent("cardsignal:valuation", { detail: { query, marketValue: valuation.median, confidence, compCount: valuation.count } }));
     setSaved(true);
   };
 
   return (
     <>
       <button className="cs-live-launch" onClick={() => setOpen(true)}><span /> LIVE MARKET</button>
-      {open && (
-        <div className="cs-live-backdrop" onMouseDown={(event) => event.target === event.currentTarget && setOpen(false)}>
-          <section className="cs-live-modal">
-            <button className="cs-live-close" onClick={() => setOpen(false)} aria-label="Close">×</button>
-            <div className="cs-live-head"><span>REAL MARKET DATA</span><h2>Smart sold comps</h2><p>CardSignal filters raw sold listings for the exact card before calculating a valuation.</p></div>
-            <form className="cs-live-search" onSubmit={search}><input value={query} onChange={(e) => setQuery(e.target.value)} placeholder="2024 Topps Chrome #172 Jackson Holliday Refractor PSA 10" /><button disabled={loading}>{loading ? "SEARCHING…" : "SEARCH SOLD COMPS"}</button></form>
+      {open && <div className="cs-live-backdrop" onMouseDown={(e) => e.target === e.currentTarget && setOpen(false)}>
+        <section className="cs-live-modal">
+          <button className="cs-live-close" onClick={() => setOpen(false)}>×</button>
+          <div className="cs-live-head"><span>REAL MARKET DATA</span><h2>Identity-aware sold comps</h2><p>CardSignal resolves the exact card identity before trusting a valuation.</p></div>
+          <form className="cs-live-search" onSubmit={search}><input value={query} onChange={(e) => setQuery(e.target.value)} /><button disabled={loading}>{loading ? "SEARCHING…" : "SEARCH SOLD COMPS"}</button></form>
+          {error && <div className="cs-live-error">{error}</div>}
 
-            {error && <div className={`cs-live-error ${setupRequired ? "setup" : ""}`}><strong>{setupRequired ? "ONE-TIME API SETUP" : "LIVE DATA ERROR"}</strong><span>{error}</span></div>}
-            {!data && !loading && !error && <div className="cs-live-empty">Search for a card to pull recent sold listings.</div>}
+          {data && identityGroups.length > 1 && !extractCardNumber(normalize(query)) && <div className="cs-identity-box">
+            <div className="cs-identity-title"><span>IDENTITY CHECK</span><b>Which card did you mean?</b><p>These sold results appear to contain multiple cards from the same player/product family.</p></div>
+            <div className="cs-identity-options">
+              {identityGroups.map((group) => {
+                const groupStats = stats(group.comps);
+                return <button key={group.key} className={selectedIdentity === group.key ? "selected" : ""} onClick={() => { setSelectedIdentity(group.key); setManual({}); setSaved(false); }}>
+                  <strong>{group.label}</strong><span>{group.comps.length} sold result{group.comps.length === 1 ? "" : "s"}</span><b>{money(groupStats.median)} median</b>
+                </button>;
+              })}
+            </div>
+          </div>}
 
-            {data && (
-              <div className="cs-live-detail">
-                <div className="cs-match-banner">
-                  <div><span>VALUATION CONFIDENCE</span><strong className={`band-${confidence.toLowerCase()}`}>{confidence}</strong><small>{avgMatch}% average title match</small></div>
-                  <div><span>ACCEPTED</span><strong>{included.length}</strong><small>used in valuation</small></div>
-                  <div><span>REJECTED</span><strong>{rejectedCount}</strong><small>excluded from stats</small></div>
-                  <button disabled={!usable} onClick={useValuation}>{saved ? "VALUATION SAVED ✓" : usable ? "USE THIS VALUATION" : "NEED 3 STRONG COMPS"}</button>
-                </div>
-
-                <div className="cs-live-summary">
-                  <div><span>FILTERED MEDIAN</span><strong>{money(summary.median)}</strong></div>
-                  <div><span>FILTERED AVERAGE</span><strong>{money(summary.average)}</strong></div>
-                  <div><span>LOW</span><strong>{money(summary.low)}</strong></div>
-                  <div><span>HIGH</span><strong>{money(summary.high)}</strong></div>
-                  <div><span>COMPS USED</span><strong>{summary.count}</strong></div>
-                </div>
-
-                <div className="cs-live-section"><span>COMP REVIEW</span><b>{data.query}</b></div>
-                <div className="cs-live-comps">
-                  {scored.length === 0 ? <div className="cs-live-empty">No sold listings returned.</div> : scored.map((comp, index) => {
-                    const key = comp.id || String(index);
-                    const isIncluded = overrides[key] ?? comp.defaultIncluded;
-                    return (
-                      <div className={`cs-live-comp ${isIncluded ? "included" : "excluded"}`} key={key}>
-                        <button className={`cs-comp-toggle ${isIncluded ? "on" : ""}`} onClick={() => toggle(comp, index)} aria-label={isIncluded ? "Exclude comp" : "Include comp"}>{isIncluded ? "✓" : "+"}</button>
-                        {comp.image ? <img src={comp.image} alt="" /> : <div className="cs-live-thumb">CS</div>}
-                        <div className="cs-live-comp-copy"><div className="cs-comp-titleline"><strong>{comp.title}</strong><em className={`band-${comp.band.toLowerCase()}`}>{comp.band} · {comp.matchScore}%</em></div><span>{comp.reason}{comp.soldDate ? ` · ${comp.soldDate.slice(0, 10)}` : ""}</span></div>
-                        <div className="cs-live-price"><b>{money(comp.soldPrice)}</b>{comp.shippingCost != null && comp.shippingCost > 0 && <small>+ {money(comp.shippingCost)} ship</small>}</div>
-                      </div>
-                    );
-                  })}
-                </div>
-                <div className="cs-live-note"><b>HOW THIS IS BETTER</b><p>Only accepted comps drive the valuation. Different inserts, years, grades, graders and card numbers are rejected automatically. You can override any comp with the +/- control.</p></div>
-              </div>
-            )}
-            <div className="cs-live-attribution">Sold-market data via SoldComps · Matching by CardSignal</div>
-          </section>
-        </div>
-      )}
-
+          {data && <>
+            <div className="cs-live-confidence">
+              <div><span>VALUATION CONFIDENCE</span><strong className={`tone-${confidence.toLowerCase().replace(" ", "-")}`}>{confidence}</strong><small>{averageScore}% average title match</small></div>
+              <div><span>ACCEPTED</span><strong>{accepted.length}</strong><small>used in valuation</small></div>
+              <div><span>REJECTED</span><strong>{reviewed.length - accepted.length}</strong><small>excluded from stats</small></div>
+              <button disabled={!canUse} onClick={useValuation}>{saved ? "VALUATION SAVED" : "USE THIS VALUATION"}</button>
+            </div>
+            <div className="cs-live-summary">
+              <div><span>FILTERED MEDIAN</span><strong>{money(valuation.median)}</strong></div><div><span>FILTERED AVERAGE</span><strong>{money(valuation.average)}</strong></div><div><span>LOW</span><strong>{money(valuation.low)}</strong></div><div><span>HIGH</span><strong>{money(valuation.high)}</strong></div><div><span>COMPS USED</span><strong>{valuation.count}</strong></div>
+            </div>
+            {!selectedIdentity && identityGroups.length > 1 && <div className="cs-live-warning">Choose a card identity above before CardSignal calculates a trusted valuation.</div>}
+            <div className="cs-live-section"><span>COMP REVIEW</span><b>{query}</b></div>
+            <div className="cs-live-comps">{reviewed.map(({ comp, key, result, included }) => <div className={`cs-live-comp ${included ? "included" : "excluded"}`} key={key}>
+              <button className="cs-comp-toggle" onClick={() => toggle(key, included)}>{included ? "✓" : "+"}</button>
+              {comp.image ? <img src={comp.image} alt="" /> : <div className="cs-live-thumb">CS</div>}
+              <div className="cs-live-comp-copy"><strong>{comp.title}</strong><span>{comp.marketplace || "eBay"}{comp.condition ? ` · ${comp.condition}` : ""}{comp.soldDate ? ` · ${comp.soldDate.slice(0,10)}` : ""}</span><em className={`match-${result.label.toLowerCase()}`}>{result.label} · {result.score}%</em>{result.reasons.length > 0 && <small>{result.reasons.join(" · ")}</small>}</div>
+              <div className="cs-live-price"><b>{money(comp.soldPrice)}</b></div>
+            </div>)}</div>
+          </>}
+          {!data && !loading && !error && <div className="cs-live-empty">Search for a card to pull recent sold listings.</div>}
+          <div className="cs-live-attribution">Sold-market data via SoldComps · CardSignal identity matcher</div>
+        </section>
+      </div>}
       <style jsx global>{`
         .cs-live-launch{position:fixed;right:24px;bottom:24px;z-index:900;height:42px;padding:0 16px;border:1px solid rgba(65,241,155,.42);border-radius:10px;background:linear-gradient(180deg,rgba(33,193,115,.2),rgba(4,30,20,.9));color:#bfffdc;font-size:10px;font-weight:900;letter-spacing:.12em;cursor:pointer}.cs-live-launch span{display:inline-block;width:7px;height:7px;margin-right:8px;border-radius:50%;background:#4ff1a0;box-shadow:0 0 12px #4ff1a0}
-        .cs-live-backdrop{position:fixed;inset:0;z-index:1300;display:grid;place-items:center;padding:24px;background:rgba(0,7,12,.82);backdrop-filter:blur(15px)}.cs-live-modal{position:relative;width:min(1120px,96vw);max-height:92vh;overflow:auto;padding:30px;border:1px solid rgba(75,207,255,.22);border-radius:20px;background:linear-gradient(155deg,#081d2e,#04111d 62%,#061821);box-shadow:0 44px 130px rgba(0,0,0,.72);color:#effaff}.cs-live-modal:before{content:"";position:absolute;left:0;top:0;width:250px;height:2px;background:linear-gradient(90deg,#45f19a,transparent)}.cs-live-close{position:absolute;right:18px;top:16px;width:34px;height:34px;border:1px solid rgba(102,189,224,.16);border-radius:9px;background:#071724;color:#8cabbd;font-size:24px;cursor:pointer}.cs-live-head>span{color:#51d9ff;font-size:10px;font-weight:900;letter-spacing:.18em}.cs-live-head h2{margin:7px 0 5px;font-size:31px}.cs-live-head p{margin:0;color:#7896a8;font-size:12px}.cs-live-search{display:grid;grid-template-columns:1fr auto;gap:10px;margin:24px 0 18px}.cs-live-search input{height:46px;border:1px solid rgba(82,190,230,.18);border-radius:10px;background:#06131f;color:#ecf9ff;padding:0 14px}.cs-live-search button,.cs-match-banner button{border:1px solid rgba(62,241,154,.42);border-radius:10px;background:rgba(35,173,108,.14);color:#c9ffe2;font-size:10px;font-weight:900;letter-spacing:.08em;cursor:pointer}.cs-live-search button{height:46px;padding:0 18px}.cs-live-search button:disabled,.cs-match-banner button:disabled{opacity:.4;cursor:not-allowed}.cs-live-error{padding:13px;border:1px solid rgba(255,91,111,.25);border-radius:9px;color:#ff9daa}.cs-live-error strong,.cs-live-error span{display:block}.cs-live-error span{margin-top:5px;font-size:11px}.cs-live-empty{padding:28px;border:1px dashed rgba(86,190,229,.15);border-radius:11px;color:#69899b;text-align:center;font-size:11px}
-        .cs-match-banner{display:grid;grid-template-columns:1.4fr .7fr .7fr 1.1fr;gap:9px;margin-bottom:10px}.cs-match-banner>div,.cs-match-banner>button{min-height:74px;padding:13px;border-radius:10px}.cs-match-banner>div{border:1px solid rgba(74,187,229,.13);background:rgba(6,24,38,.72)}.cs-match-banner span,.cs-live-summary span{display:block;color:#6e8fa2;font-size:8px;font-weight:900;letter-spacing:.12em}.cs-match-banner strong{display:block;margin-top:5px;font-size:20px}.cs-match-banner small{display:block;margin-top:3px;color:#607f91;font-size:8px}.band-exact{color:#67f3aa!important}.band-strong{color:#63dfff!important}.band-loose{color:#ffd36a!important}.band-rejected{color:#ff7586!important}
-        .cs-live-summary{display:grid;grid-template-columns:repeat(5,1fr);gap:9px;margin:10px 0 18px}.cs-live-summary>div{padding:14px;border:1px solid rgba(74,187,229,.13);border-radius:10px;background:rgba(6,24,38,.72)}.cs-live-summary strong{display:block;margin-top:6px;font-size:18px}.cs-live-summary>div:first-child strong{color:#62efaa}.cs-live-section{display:flex;justify-content:space-between;gap:20px;margin:18px 0 10px}.cs-live-section span{color:#50d9ff;font-size:9px;font-weight:900;letter-spacing:.14em}.cs-live-section b{color:#8ca8b7;font-size:10px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-        .cs-live-comps{display:grid;gap:7px}.cs-live-comp{display:grid;grid-template-columns:32px 52px 1fr auto;align-items:center;gap:12px;padding:10px 12px;border:1px solid rgba(78,183,224,.11);border-radius:10px;background:rgba(7,24,38,.68);transition:.18s}.cs-live-comp.excluded{opacity:.48}.cs-live-comp.included{border-color:rgba(73,224,165,.16)}.cs-comp-toggle{width:28px;height:28px;border:1px solid rgba(86,190,229,.2);border-radius:7px;background:#06141f;color:#7b9bad;cursor:pointer}.cs-comp-toggle.on{border-color:rgba(68,238,156,.35);color:#5cf0a5;background:rgba(35,174,108,.1)}.cs-live-comp>img,.cs-live-thumb{width:52px;height:52px;border-radius:7px;object-fit:cover;background:#0a2030}.cs-live-thumb{display:grid;place-items:center;color:#4bcdf3;font-size:10px;font-weight:900}.cs-live-comp-copy{min-width:0}.cs-comp-titleline{display:flex;align-items:center;gap:8px;min-width:0}.cs-comp-titleline strong{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:11px}.cs-comp-titleline em{flex:none;font-size:8px;font-style:normal;font-weight:900}.cs-live-comp-copy>span{display:block;margin-top:4px;color:#69899b;font-size:9px}.cs-live-price{text-align:right}.cs-live-price b{display:block;color:#61efaa;font-size:14px}.cs-live-price small{display:block;margin-top:3px;color:#6f8fa0;font-size:8px}.cs-live-note{margin-top:16px;padding:13px;border:1px solid rgba(64,218,255,.14);border-radius:10px;background:rgba(19,79,103,.1)}.cs-live-note b{color:#55d9ff;font-size:8px}.cs-live-note p{margin:6px 0 0;color:#91adbc;font-size:10px;line-height:1.5}.cs-live-attribution{margin-top:18px;text-align:right;color:#506f80;font-size:9px}
-        @media(max-width:780px){.cs-live-modal{padding:22px 16px}.cs-live-search,.cs-match-banner{grid-template-columns:1fr}.cs-live-summary{grid-template-columns:repeat(2,1fr)}.cs-live-comp{grid-template-columns:28px 42px 1fr}.cs-live-comp>img,.cs-live-thumb{width:42px;height:42px}.cs-live-price{grid-column:3;text-align:left}.cs-live-section{flex-direction:column;gap:5px}}
+        .cs-live-backdrop{position:fixed;inset:0;z-index:1300;display:grid;place-items:center;padding:24px;background:rgba(0,7,12,.82);backdrop-filter:blur(15px)}.cs-live-modal{position:relative;width:min(1080px,96vw);max-height:92vh;overflow:auto;padding:30px;border:1px solid rgba(75,207,255,.22);border-radius:20px;background:linear-gradient(155deg,#081d2e,#04111d 62%,#061821);box-shadow:0 44px 130px rgba(0,0,0,.72);color:#effaff}.cs-live-close{position:absolute;right:18px;top:16px;width:34px;height:34px;border:1px solid rgba(102,189,224,.16);border-radius:9px;background:#071724;color:#8cabbd;font-size:24px}.cs-live-head>span,.cs-live-section span,.cs-identity-title>span{color:#51d9ff;font-size:9px;font-weight:900;letter-spacing:.16em}.cs-live-head h2{margin:7px 0 5px;font-size:31px}.cs-live-head p,.cs-identity-title p{margin:0;color:#7896a8;font-size:11px}.cs-live-search{display:grid;grid-template-columns:1fr auto;gap:10px;margin:22px 0 16px}.cs-live-search input{height:46px;border:1px solid rgba(82,190,230,.18);border-radius:10px;background:#06131f;color:#ecf9ff;padding:0 14px}.cs-live-search button,.cs-live-confidence button{border:1px solid rgba(62,241,154,.42);border-radius:10px;background:rgba(35,173,108,.14);color:#c9ffe2;font-size:9px;font-weight:900;letter-spacing:.1em;padding:0 18px}.cs-live-search button:disabled,.cs-live-confidence button:disabled{opacity:.35}.cs-live-error,.cs-live-warning{padding:12px;border:1px solid rgba(255,91,111,.24);border-radius:9px;color:#ff9daa;background:rgba(150,30,47,.09);font-size:10px}.cs-live-warning{margin-bottom:12px;border-color:rgba(255,193,88,.2);color:#e8c27a;background:rgba(180,120,20,.06)}
+        .cs-identity-box{margin:14px 0 16px;padding:15px;border:1px solid rgba(76,211,255,.18);border-radius:12px;background:rgba(16,66,91,.12)}.cs-identity-title b{display:block;margin:6px 0 4px}.cs-identity-options{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-top:12px}.cs-identity-options button{padding:12px;text-align:left;border:1px solid rgba(83,184,223,.13);border-radius:9px;background:#071724;color:#dff4fd}.cs-identity-options button.selected{border-color:rgba(72,241,157,.45);background:rgba(38,180,112,.1)}.cs-identity-options strong,.cs-identity-options span,.cs-identity-options b{display:block}.cs-identity-options strong{font-size:11px}.cs-identity-options span{margin:4px 0;color:#6f8fa1;font-size:9px}.cs-identity-options b{color:#62efaa;font-size:11px}
+        .cs-live-confidence{display:grid;grid-template-columns:2fr 1fr 1fr 1.5fr;gap:9px;margin-bottom:10px}.cs-live-confidence>div{padding:13px;border:1px solid rgba(74,187,229,.13);border-radius:10px;background:rgba(6,24,38,.72)}.cs-live-confidence span,.cs-live-summary span{display:block;color:#6e8fa2;font-size:8px;font-weight:900;letter-spacing:.12em}.cs-live-confidence strong,.cs-live-summary strong{display:block;margin-top:6px;font-size:18px}.cs-live-confidence small{display:block;margin-top:3px;color:#57788b;font-size:8px}.tone-exact,.tone-strong{color:#62efaa}.tone-needs-identity{color:#f0c56d}.tone-loose,.tone-no-match{color:#7ea5b8}.cs-live-summary{display:grid;grid-template-columns:repeat(5,1fr);gap:9px;margin-bottom:16px}.cs-live-summary>div{padding:13px;border:1px solid rgba(74,187,229,.13);border-radius:10px;background:rgba(6,24,38,.72)}.cs-live-summary>div:first-child strong{color:#62efaa}.cs-live-section{display:flex;justify-content:space-between;gap:20px;margin:16px 0 9px}.cs-live-section b{color:#8ca8b7;font-size:9px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+        .cs-live-comps{display:grid;gap:7px}.cs-live-comp{display:grid;grid-template-columns:34px 48px 1fr auto;align-items:center;gap:11px;padding:9px 11px;border:1px solid rgba(78,183,224,.1);border-radius:10px;background:rgba(7,24,38,.68)}.cs-live-comp.excluded{opacity:.48}.cs-live-comp.included{border-color:rgba(63,232,151,.2)}.cs-comp-toggle{width:28px;height:28px;border:1px solid rgba(70,216,255,.18);border-radius:7px;background:#061522;color:#58dda0}.cs-live-comp>img,.cs-live-thumb{width:48px;height:48px;border-radius:7px;object-fit:cover;background:#0a2030}.cs-live-thumb{display:grid;place-items:center;color:#4bcdf3;font-size:9px}.cs-live-comp-copy{min-width:0}.cs-live-comp-copy>strong{display:block;font-size:10px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.cs-live-comp-copy>span{display:block;margin-top:3px;color:#69899b;font-size:8px}.cs-live-comp-copy em{display:inline-block;margin-top:5px;font-style:normal;font-size:8px;font-weight:800}.cs-live-comp-copy small{margin-left:8px;color:#6f8491;font-size:8px}.match-exact,.match-strong{color:#59eaa0}.match-loose{color:#6fd8ff}.match-rejected{color:#ff7585}.cs-live-price b{color:#61efaa;font-size:13px}.cs-live-empty{padding:28px;border:1px dashed rgba(86,190,229,.15);border-radius:11px;color:#69899b;text-align:center;font-size:11px}.cs-live-attribution{margin-top:16px;text-align:right;color:#506f80;font-size:8px}
+        @media(max-width:760px){.cs-live-modal{padding:22px 14px}.cs-live-search,.cs-live-confidence{grid-template-columns:1fr}.cs-live-summary{grid-template-columns:repeat(2,1fr)}.cs-identity-options{grid-template-columns:1fr}.cs-live-comp{grid-template-columns:30px 42px 1fr}.cs-live-price{grid-column:3}.cs-live-comp>img,.cs-live-thumb{width:42px;height:42px}}
       `}</style>
     </>
   );
