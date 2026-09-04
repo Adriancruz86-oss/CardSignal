@@ -14,6 +14,14 @@ type UserCard = {
   purchasePrice?: number;
   image?: string;
   addedAt?: string;
+  liveValuation?: {
+    provider?: string;
+    identityLabel?: string;
+    confidence?: string;
+    median?: number;
+    compCount?: number;
+    savedAt?: string;
+  };
 };
 
 const STORAGE_KEY = "cardsignal-added-cards";
@@ -108,6 +116,12 @@ export default function UserCardLayer() {
   }, []);
 
   useEffect(() => {
+    const onCardsChanged = () => refresh();
+    window.addEventListener("cardsignal:user-cards-changed", onCardsChanged);
+    return () => window.removeEventListener("cardsignal:user-cards-changed", onCardsChanged);
+  }, []);
+
+  useEffect(() => {
     const watchPanel = document.querySelector<HTMLElement>(".triple-grid .radar-panel:nth-child(3)");
     if (!watchPanel) return;
 
@@ -182,8 +196,8 @@ export default function UserCardLayer() {
               ) : activeCards.map((card) => (
                 <article className="cs-portfolio-card" key={card.id}>
                   <div className={`cs-portfolio-art ${card.tone}`}>{card.image ? <img src={card.image} alt={card.player} /> : <span>{initials(card.player)}</span>}</div>
-                  <div className="cs-portfolio-copy"><strong>{card.player}</strong><span>{card.meta}</span><small>{card.mode === "owned" && card.purchasePrice ? `Paid $${card.purchasePrice.toFixed(2)}` : card.mode === "owned" ? "Purchase price not entered" : "Watching for an entry"}</small></div>
-                  <div className="cs-portfolio-market"><small>MARKET</small><strong>${Number(card.marketValue || 0).toFixed(2)}</strong><span className={card.move.startsWith("-") ? "negative" : "positive"}>{card.move}</span></div>
+                  <div className="cs-portfolio-copy"><strong>{card.player}</strong><span>{card.meta}</span><small>{card.liveValuation ? `Live comps · ${card.liveValuation.confidence || "matched"} · ${card.liveValuation.compCount || 0} comps` : card.mode === "owned" && card.purchasePrice ? `Paid $${card.purchasePrice.toFixed(2)}` : card.mode === "owned" ? "Purchase price not entered" : "Watching for an entry"}</small></div>
+                  <div className="cs-portfolio-market"><small>{card.liveValuation ? "LIVE MARKET" : "MARKET"}</small><strong>${Number(card.marketValue || 0).toFixed(2)}</strong><span className={card.move.startsWith("-") ? "negative" : "positive"}>{card.move}</span></div>
                   <div className={`cs-portfolio-score ${card.tone}`}><small>SCORE</small><strong>{card.score}</strong><span>{card.tone.toUpperCase()}</span></div>
                   <div className="cs-portfolio-actions">
                     <button onClick={() => updateMode(card.id, card.mode === "owned" ? "watching" : "owned")}>{card.mode === "owned" ? "MOVE TO WATCHLIST" : "MARK AS OWNED"}</button>
