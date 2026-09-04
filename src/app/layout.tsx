@@ -11,6 +11,7 @@ import SignalLabLayer from "./signal-lab-layer";
 import "./globals.css";
 import "./asset-overrides.css";
 import "./live-market-click-fix.css";
+import "./signal-lab-dropdown-fix.css";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
