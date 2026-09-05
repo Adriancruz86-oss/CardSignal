@@ -19,7 +19,14 @@ export default function CardSignalScoreLayer(){
     const player=hero.querySelector<HTMLElement>(".panel-heading h2")?.textContent?.trim();
     const meta=hero.querySelector<HTMLElement>(".panel-heading p")?.textContent?.trim();
     const card=findByText(player,meta);
-    if(card){const sc=getCardSignalScore(card);const label=hero.querySelector<HTMLElement>(".signal-primary .label");const value=hero.querySelector<HTMLElement>(".massive-score");if(label)label.textContent="CARDSIGNAL SCORE";if(value)value.textContent=sc.score?String(sc.score):"—";}
+    if(card){
+      const sc=getCardSignalScore(card);
+      const label=hero.querySelector<HTMLElement>(".signal-primary .label");
+      const value=hero.querySelector<HTMLElement>(".massive-score");
+      const scoreText=sc.score?String(sc.score):"—";
+      if(label&&label.textContent!=="CARDSIGNAL SCORE")label.textContent="CARDSIGNAL SCORE";
+      if(value&&value.textContent!==scoreText)value.textContent=scoreText;
+    }
    }
    const modal=document.querySelector<HTMLElement>(".cs-detail-modal");
    if(modal){
@@ -29,13 +36,13 @@ export default function CardSignalScoreLayer(){
     if(card){
      const sc=getCardSignalScore(card);let strip=modal.querySelector<HTMLElement>(".cs-unified-score");
      if(!strip){strip=document.createElement("div");strip.className="cs-unified-score";modal.querySelector(".cs-detail-head")?.insertAdjacentElement("afterend",strip)}
-     if(strip){const c=sc.components;strip.className=`cs-unified-score ${sc.tone}`;strip.innerHTML=`<div class="cs-us-main"><small>CARDSIGNAL SCORE</small><strong>${sc.score||"—"}</strong><span>${safe(sc.label)}</span></div><div class="cs-us-components"><p><span>Price direction</span><b>${c.price}/30</b></p><p><span>Sales velocity</span><b>${c.velocity}/20</b></p><p><span>Market evidence</span><b>${c.evidence}/20</b></p><p><span>Confidence</span><b>${c.confidence}/15</b></p><p><span>Freshness</span><b>${c.freshness}/15</b></p></div>`;}
+     if(strip){const c=sc.components;const cls=`cs-unified-score ${sc.tone}`;const html=`<div class="cs-us-main"><small>CARDSIGNAL SCORE</small><strong>${sc.score||"—"}</strong><span>${safe(sc.label)}</span></div><div class="cs-us-components"><p><span>Price direction</span><b>${c.price}/30</b></p><p><span>Sales velocity</span><b>${c.velocity}/20</b></p><p><span>Market evidence</span><b>${c.evidence}/20</b></p><p><span>Confidence</span><b>${c.confidence}/15</b></p><p><span>Freshness</span><b>${c.freshness}/15</b></p></div>`;if(strip.className!==cls)strip.className=cls;if(strip.innerHTML!==html)strip.innerHTML=html;}
     }
    }
   };
   const schedule=()=>{if(queued)return;queued=true;requestAnimationFrame(apply)};
   apply();
-  const obs=new MutationObserver(schedule);obs.observe(document.body,{childList:true,subtree:true,characterData:true});
+  const obs=new MutationObserver(schedule);obs.observe(document.body,{childList:true,subtree:true});
   window.addEventListener("cardsignal:user-cards-changed",schedule);
   return()=>{obs.disconnect();window.removeEventListener("cardsignal:user-cards-changed",schedule)};
  },[]);
