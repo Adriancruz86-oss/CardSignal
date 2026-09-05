@@ -13,7 +13,11 @@ CardSignal's core product goal is to detect conditions that may precede sports-c
 - Pattern Playbooks that aggregate repeating catalyst × league × card-role × sensitivity setups and show sample size, median outcome, positive rate, large-move rate, and observed range
 - Signal Scorecard that automatically records qualifying Edge signals and grades later 24H / 3D / 7D / 30D exact-card outcomes
 - Missed-Move Audit that flags 8%+ saved 7D moves with no same-direction Edge signal in the preceding seven days
+- Edge calibration by score bucket so higher Edge numbers have to prove they outperform lower ones
 - Smart Edge alerts generated from newly recorded EARLY EDGE, CONFIRMING, and RISK STACK observations
+- Explicit “What would change my mind?” upgrade, downgrade, and clear rules for current Edge calls
+- Compact longitudinal scan history up to 12,000 observations for validation beyond the short alert-history window
+- Historical Analogs, Pattern Playbooks, Catalyst Outcomes, Validation Cohorts, and Signal Scorecard now read durable longitudinal history
 - News/catalyst tracking and catalyst integration into card detail / Action Center
 - Catalyst Event History preserving first-seen and last-seen timestamps for later outcome validation
 - Catalyst Outcome Lab matching first-seen events to later saved market scans at 24h / 3d / 7d / 30d horizons without interpolation
@@ -27,9 +31,12 @@ CardSignal's core product goal is to detect conditions that may precede sports-c
 - Segment Explorer for sport, era, role, grade status, and catalyst-sensitivity concentration
 - Player Performance model, card-detail panel, and portfolio-wide Performance Watch
 - Portfolio league filtering with explicit league overrides
+- Collection Organizer for binders/boxes, tags, quantity, favorites, purchase date/source, notes, and CSV export
+- Sell Prep workflow with exact-card reference value, transparent fast/market/high listing bands, editable fee/shipping assumptions, estimated net/P&L, listing-title draft, description draft, and pre-list checklist
+- Pokémon lightweight portfolio / price-guide tracker kept separate from sports intelligence logic
 - Benchmark Portfolio Seeder for repeatable CSV/JSON test-account datasets up to 500 cards, with benchmark-only reset behavior
 - Benchmark Health and Scan Readiness dashboards for repeated-observation coverage and daily scan cadence
-- Cloud sync now isolates local data when switching between known accounts so one account's collection is not silently uploaded into another account
+- Cloud sync isolates local data when switching between known accounts so one account's collection is not silently uploaded into another account
 
 ## Product differentiation focus
 
@@ -43,11 +50,27 @@ CardSignal's core product goal is to detect conditions that may precede sports-c
 - [x] Add a self-grading Signal Scorecard with directional hit rate, meaningful 4%+ hit rate, median direction-adjusted outcome, false-positive visibility, and no-match tracking
 - [x] Audit missed 8%+ moves so CardSignal measures opportunities/risk it failed to flag instead of grading only the calls it made
 - [x] Turn qualifying Edge observations into explicit smart alerts without changing the production score
+- [x] Add explicit “what would change my mind?” conditions for current Edge calls
+- [x] Add Edge-score calibration buckets to test whether higher scores actually perform better
+- [x] Expand validation storage with a compact 12,000-observation longitudinal scan history
 - [ ] Surface the most relevant validated playbook directly inside each live Edge Stack card
-- [ ] Add explicit “what would change my mind?” upgrade / downgrade conditions to each live Edge readout
 - [ ] Extend analog matching to full performance + supply-state snapshots once those histories are dense enough at event time
-- [ ] Add signal precision / recall style reporting after enough scored opportunities and missed moves exist
+- [ ] Add precision / recall-style reporting once the missed-move sample is large enough for a meaningful denominator
 - [ ] Promote only statistically credible validated factors into the unified Score
+
+## Competitive parity / usability
+
+- [x] Collection organization: binders/boxes, tags, quantities, notes, favorites, purchase source/date, CSV export
+- [x] Sell-prep worksheet: exact-card reference, transparent listing bands, estimated marketplace net/P&L, copyable listing title/description
+- [x] Pokémon basic collection/value tracker as a separate lightweight vertical
+- [~] Photo/card intake foundation
+  - [x] photo/catalog guard and OCR fallback plumbing
+  - [ ] consolidate into a polished camera-first add flow with explicit identity confirmation before saving
+  - [ ] improve parallel/variant confirmation UX for lookalike cards
+- [ ] Cross-market completed-sale aggregation beyond the current primary market sources when legal/reliable feeds are available
+- [ ] Direct marketplace listing integration after authentication/API requirements are worth the complexity; keep Sell Prep provider-neutral until then
+- [ ] Custom price/Edge/supply/velocity alert thresholds per card
+- [ ] Set/checklist completion views for collectors who use CardSignal as a collection manager rather than only an intelligence tool
 
 ## Internal validation / benchmark roadmap
 
@@ -60,8 +83,9 @@ CardSignal's core product goal is to detect conditions that may precede sports-c
 - [x] Add validation cohort analysis with minimum-sample labels
 - [x] Audit remaining collection write paths for hidden 100/150-card truncation; remove obsolete 150-card Portfolio Pulse implementation
 - [x] Define machine-readable 300-card benchmark target quotas and curation rules in `data/benchmark/benchmark-300-targets.json`
+- [x] Add local durable validation history beyond the legacy 1,200-row alert-history cap
 - [ ] Curate the first ~300 exact card identities across leagues, eras, grades, liquidity, price bands, rookie/veteran roles, and base/parallel/auto/scarcity profiles
-- [ ] Expand durable scan-history storage beyond the current local-browser retention window before relying on 30D benchmark grading
+- [ ] Move longitudinal validation history to server persistence before treating long-horizon benchmark data as durable production infrastructure
 - [ ] Add scheduled background benchmark scans after Supabase/Vercel deployment
 - [ ] Persist server-run scan jobs and job health after cloud deployment
 
@@ -122,6 +146,7 @@ CardSignal's core product goal is to detect conditions that may precede sports-c
 - [x] Historical analog matching: similar catalyst + velocity + segment profiles
 - [x] Record and grade CardSignal's own Edge signals against later market outcomes
 - [x] Identify large moves that occurred without a preceding same-direction Edge signal
+- [x] Test Edge-score calibration by score bucket without changing production weights
 - [~] Measure outcome rates at 24h / 3d / 7d / 30d
   - [x] card-level median change at each horizon when a nearby saved scan exists
   - [x] aggregate matched-count / median / average / positive-rate calculations
@@ -147,3 +172,4 @@ CardSignal's core product goal is to detect conditions that may precede sports-c
 - Thin validation cohorts remain visible but must not drive score tuning.
 - Signal Scorecard results must preserve pending and no-match cases rather than silently dropping unfavorable or missing outcomes.
 - Missed-move auditing is part of product quality; CardSignal should measure what it failed to flag, not only what it predicted.
+- Sell Prep price bands are transparent math around the current saved reference value, not forecasts or guarantees.
