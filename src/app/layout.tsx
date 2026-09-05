@@ -14,6 +14,7 @@ import PhotoOcrFallbackLayer from "./photo-ocr-fallback-layer";
 import PortfolioPulseLayer from "./portfolio-pulse-v2";
 import DashboardLiveLayer from "./dashboard-live-layer";
 import ScanHistoryAlertsLayer from "./scan-history-alerts-layer";
+import LongitudinalScanHistoryLayer from "./longitudinal-scan-history-layer";
 import HistoryHomeBridge from "./history-home-bridge";
 import SupplyWatchBridgeLayer from "./supply-watch-bridge-layer";
 import ActionCenterLayer from "./action-center-layer";
@@ -81,6 +82,7 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
         <PortfolioPulseLayer />
         <DashboardLiveLayer />
         <ScanHistoryAlertsLayer />
+        <LongitudinalScanHistoryLayer />
         <HistoryHomeBridge />
         <SupplyWatchBridgeLayer />
         <ActionCenterLayer />
