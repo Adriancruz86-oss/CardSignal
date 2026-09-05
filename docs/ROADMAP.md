@@ -10,6 +10,7 @@ CardSignal's core product goal is to detect conditions that may precede sports-c
 - Scan history, alerts, Action Center, Opportunity Feed, Decision Journal
 - News/catalyst tracking and catalyst integration into card detail / Action Center
 - Catalyst Event History preserving first-seen and last-seen timestamps for later outcome validation
+- Catalyst Outcome Lab matching first-seen events to later saved market scans at 24h / 3d / 7d / 30d horizons without interpolation
 - Discovery Radar for out-of-portfolio players with configurable price bands
 - Market Scout for broad headline-driven discovery
 - Supply Watch foundation for active eBay listings
@@ -72,9 +73,13 @@ CardSignal's core product goal is to detect conditions that may precede sports-c
 ### P3 — historical learning
 
 - [x] Catalyst event history with first-seen timestamps
-- [ ] Correlate catalysts with later scan outcomes without claiming causation
+- [x] Correlate catalysts with later scan outcomes without claiming causation
 - [ ] Historical analog matching: similar catalyst + velocity + segment profiles
-- [ ] Measure outcome rates at 24h / 3d / 7d / 30d
+- [~] Measure outcome rates at 24h / 3d / 7d / 30d
+  - [x] card-level median change at each horizon when a nearby saved scan exists
+  - [x] aggregate matched-count / median / average / positive-rate calculations
+  - [ ] category-by-category outcome tables after enough observations accumulate
+  - [ ] sport / era / card-role outcome breakdowns after enough observations accumulate
 - [ ] Learn which catalyst categories matter most by sport and card segment
 - [ ] Calibrate Catalyst Sensitivity weights only after sufficient labeled history
 - [ ] Decide whether validated signals should enter the unified CardSignal Score
