@@ -12,6 +12,7 @@ CardSignal's core product goal is to detect conditions that may precede sports-c
 - Discovery Radar for out-of-portfolio players with configurable price bands
 - Market Scout for broad headline-driven discovery
 - Supply Watch foundation for active eBay listings
+- Grading Population history model with manual/API-ready snapshots and card-detail trend UI
 
 ## Leading-indicator roadmap
 
@@ -31,12 +32,15 @@ CardSignal's core product goal is to detect conditions that may precede sports-c
   - streaks / season highs / role changes
   - transactions / call-ups / injuries / starting-status changes
   - independent performance catalyst separate from headline sentiment
-- [ ] Grading Population Monitor
-  - PSA population snapshots by exact card / grade
-  - population growth rate (7D / 30D / 90D)
-  - high-grade supply acceleration warning
-  - stagnant-pop scarcity support
-  - add BGS / SGC / CGC when reliable sources are available
+- [~] Grading Population Monitor
+  - [x] population snapshot/history schema by exact saved card, provider, and grade
+  - [x] card-detail population monitor with baseline / growth status
+  - [x] 30D / 90D growth calculations when sufficient snapshots exist
+  - [x] explicit manual-vs-API source tagging so no population value is inferred or fabricated
+  - [ ] connect PSA population source when approved/reliable access exists
+  - [ ] high-grade supply acceleration alerts across the portfolio
+  - [ ] stagnant-pop scarcity support in Opportunity ranking after validation
+  - [ ] add BGS / SGC / CGC adapters when reliable sources are available
 - [ ] eBay active-supply production integration
   - listing count trend
   - median / low ask trend
