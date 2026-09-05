@@ -36,6 +36,7 @@ import "./globals.css";
 import "./asset-overrides.css";
 import "./live-market-click-fix.css";
 import "./signal-lab-dropdown-fix.css";
+import "./ui-polish-pass.css";
 
 const geistSans = Geist({ variable: "--font-geist-sans", subsets: ["latin"] });
 const geistMono = Geist_Mono({ variable: "--font-geist-mono", subsets: ["latin"] });
