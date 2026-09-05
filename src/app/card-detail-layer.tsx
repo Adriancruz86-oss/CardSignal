@@ -2,288 +2,47 @@
 
 import { useEffect, useMemo, useState } from "react";
 
-type DetailCard = {
-  key: string;
-  player: string;
-  meta: string;
-  score: number;
-  move: number;
-  marketValue: number;
-  recommendation: "BUY" | "HOLD" | "SELL";
-  confidence: "HIGH" | "MEDIUM";
-  lastScan: string;
-  scanCount: number;
-};
+type PulseStatus="BUY MORE"|"HOLD"|"WATCH CLOSELY"|"SELL RISK"|"NOT ENOUGH DATA";
+type Sale={source:"SoldComps"|"The Card API";id:string;title:string;price:number|null;date:string;marketplace:string};
+type MarketScan={scannedAt:string;acceptedCount:number;rejectedCount:number;currentMedian:number|null;recentMedian:number|null;priorMedian:number|null;change7d:number|null;recentSales:number;velocity:number|null;pulse:PulseStatus;confidence:string;elapsedMs:number;acceptedSales?:Sale[]};
+type Identity={playerName?:string;year?:string;setName?:string;cardNumber?:string;variation?:string;cardId?:string};
+type StoredCard={id:number;player:string;meta?:string;year?:string;setName?:string;cardNumber?:string;variant?:string;mode?:"owned"|"watching";score?:number;marketValue?:number;purchasePrice?:number;image?:string;catalogConfirmed?:boolean;catalogSource?:string;catalogCardId?:string;canonicalIdentity?:Identity;marketScan?:MarketScan;liveValuation?:{compCount?:number;median?:number;confidence?:string;provider?:string;savedAt?:string}};
+type ScanSnapshot={id:string;cardId:number;player:string;meta:string;scannedAt:string;acceptedCount:number;currentMedian:number|null;change7d:number|null;velocity:number|null;pulse:PulseStatus;confidence:string};
+type Alert={id:string;cardId:number;player:string;meta:string;createdAt:string;kind:string;title:string;detail:string;read?:boolean};
+type ScanResponse={ok:boolean;error?:string;elapsedMs?:number;acceptedCount?:number;rejectedCount?:number;currentMedian?:number|null;recentMedian?:number|null;priorMedian?:number|null;change7d?:number|null;recentSales?:number;velocity?:number|null;pulse?:PulseStatus;confidence?:string;acceptedSales?:Sale[]};
 
-type PersistedMap = Record<string, Partial<DetailCard>>;
+const CARD_KEY="cardsignal-added-cards",HISTORY_KEY="cardsignal-scan-history",ALERTS_KEY="cardsignal-alerts";
+function readJson<T>(key:string,fallback:T):T{try{const v=JSON.parse(localStorage.getItem(key)||"");return(v??fallback)as T}catch{return fallback}}
+function readCards(){const v=readJson<StoredCard[]>(CARD_KEY,[]);return Array.isArray(v)?v:[]}
+function money(v:number|null|undefined){return v==null?"—":`$${v.toLocaleString(undefined,{minimumFractionDigits:2,maximumFractionDigits:2})}`}
+function pct(v:number|null|undefined){return v==null?"—":`${v>=0?"+":""}${v.toFixed(1)}%`}
+function initials(name:string){return name.split(/\s+/).filter(Boolean).map(p=>p[0]).join("").slice(0,2).toUpperCase()}
+function scoreFromScan(s:MarketScan){if(s.pulse==="BUY MORE")return Math.min(95,72+Math.round((s.change7d||0)/2)+(s.velocity||0)/10);if(s.pulse==="SELL RISK")return Math.max(20,45+Math.round((s.change7d||0)/2));if(s.pulse==="WATCH CLOSELY")return 58;if(s.pulse==="HOLD")return 64;return 0}
+function tone(p?:PulseStatus){return p==="BUY MORE"?"buy":p==="SELL RISK"?"sell":p==="WATCH CLOSELY"?"watch":"hold"}
+function findCard(row:HTMLElement){const cards=readCards();const id=Number(row.dataset.userCardId||row.closest<HTMLElement>("[data-user-card-id]")?.dataset.userCardId||0);if(id){const byId=cards.find(c=>c.id===id);if(byId)return byId}const player=row.querySelector<HTMLElement>(".signal-copy strong")?.textContent?.trim()||row.querySelector<HTMLElement>("strong")?.textContent?.trim();const meta=row.querySelector<HTMLElement>(".signal-copy span")?.textContent?.trim()||row.querySelector<HTMLElement>("span")?.textContent?.trim();return cards.find(c=>c.player===player&&(!meta||c.meta===meta))||cards.find(c=>c.player===player)||null}
 
-const detailSteps = [
-  "Refreshing recent sales",
-  "Rechecking active listings",
-  "Measuring demand shift",
-  "Recalculating momentum",
-];
+function HistoryChart({points}:{points:ScanSnapshot[]}){const priced=points.filter(p=>p.currentMedian!=null).sort((a,b)=>new Date(a.scannedAt).getTime()-new Date(b.scannedAt).getTime());if(priced.length<2)return <div className="cs-md-empty"><b>History is just starting</b><span>Run this card again later to build a real price line. No synthetic points are drawn.</span></div>;const values=priced.map(p=>p.currentMedian as number),min=Math.min(...values),max=Math.max(...values),span=Math.max(1,max-min);const path=priced.map((p,i)=>{const x=16+(i/(priced.length-1))*568;const y=148-((p.currentMedian!-min)/span)*112;return`${x},${y}`}).join(" ");return <div className="cs-md-chart"><div className="cs-md-chart-labels"><span>{money(max)}</span><span>{money(min)}</span></div><svg viewBox="0 0 600 165" preserveAspectRatio="none"><polyline points={path} fill="none" stroke="currentColor" strokeWidth="3" vectorEffect="non-scaling-stroke"/></svg><div className="cs-md-chart-dates"><span>{new Date(priced[0].scannedAt).toLocaleDateString()}</span><span>{priced.length} saved scans</span><span>{new Date(priced.at(-1)!.scannedAt).toLocaleDateString()}</span></div></div>}
 
-function hashText(value: string) {
-  let hash = 2166136261;
-  for (let i = 0; i < value.length; i += 1) {
-    hash ^= value.charCodeAt(i);
-    hash = Math.imul(hash, 16777619);
-  }
-  return Math.abs(hash >>> 0);
-}
+export default function CardDetailLayer(){
+ const[card,setCard]=useState<StoredCard|null>(null),[scanning,setScanning]=useState(false),[error,setError]=useState("");
+ useEffect(()=>{document.body.classList.add("cs-detail-enabled");const click=(e:MouseEvent)=>{const target=e.target as HTMLElement;if(target.closest(".cs-detail-modal,.cs-modal,.cs-pulse-modal"))return;const row=target.closest<HTMLElement>(".signal-row,.cs-pulse-row");if(!row)return;const found=findCard(row);if(found){setCard(found);setError("")}};document.addEventListener("click",click);return()=>{document.removeEventListener("click",click);document.body.classList.remove("cs-detail-enabled")}},[]);
+ useEffect(()=>{if(!card)return;const key=(e:KeyboardEvent)=>e.key==="Escape"&&setCard(null);window.addEventListener("keydown",key);return()=>window.removeEventListener("keydown",key)},[card]);
+ useEffect(()=>{if(!card)return;const refresh=()=>{const latest=readCards().find(c=>c.id===card.id);if(latest)setCard(latest)};window.addEventListener("cardsignal:user-cards-changed",refresh);return()=>window.removeEventListener("cardsignal:user-cards-changed",refresh)},[card?.id]);
 
-function recommendationFor(score: number): DetailCard["recommendation"] {
-  return score >= 75 ? "BUY" : score <= 55 ? "SELL" : "HOLD";
-}
+ const history=useMemo(()=>card?readJson<ScanSnapshot[]>(HISTORY_KEY,[]).filter(h=>h.cardId===card.id):[],[card]);
+ const alerts=useMemo(()=>card?readJson<Alert[]>(ALERTS_KEY,[]).filter(a=>a.cardId===card.id).slice(0,8):[],[card]);
+ const previous=useMemo(()=>{if(!card?.marketScan)return null;return history.filter(h=>h.scannedAt!==card.marketScan?.scannedAt).sort((a,b)=>new Date(b.scannedAt).getTime()-new Date(a.scannedAt).getTime())[0]||null},[card,history]);
 
-function confidenceFor(score: number): DetailCard["confidence"] {
-  return score >= 82 || score <= 50 ? "HIGH" : "MEDIUM";
-}
+ const rescan=async()=>{if(!card||scanning)return;setScanning(true);setError("");const id=card.canonicalIdentity||{};const p=new URLSearchParams({player:id.playerName||card.player,year:id.year||card.year||"",set:id.setName||card.setName||"",cardNumber:id.cardNumber||card.cardNumber||"",variant:id.variation||card.variant||""});try{const r=await fetch(`/api/portfolio-scan?${p.toString()}`,{cache:"no-store"});const j=await r.json() as ScanResponse;if(!r.ok||!j.ok)throw new Error(j.error||"Card scan failed");const scan:MarketScan={scannedAt:new Date().toISOString(),acceptedCount:Number(j.acceptedCount||0),rejectedCount:Number(j.rejectedCount||0),currentMedian:j.currentMedian??null,recentMedian:j.recentMedian??null,priorMedian:j.priorMedian??null,change7d:j.change7d??null,recentSales:Number(j.recentSales||0),velocity:j.velocity??null,pulse:j.pulse||"NOT ENOUGH DATA",confidence:j.confidence||"LOW",elapsedMs:Number(j.elapsedMs||0),acceptedSales:Array.isArray(j.acceptedSales)?j.acceptedSales:[]};const next=readCards().map(c=>c.id===card.id?{...c,marketScan:scan,analyzed:scan.acceptedCount>=3,marketValue:scan.currentMedian??c.marketValue??0,move:scan.change7d==null?"NEEDS TREND DATA":`${scan.change7d>=0?"+":""}${scan.change7d.toFixed(1)}% 7D`,score:Math.round(scoreFromScan(scan)),tone:scan.pulse==="BUY MORE"?"buy":scan.pulse==="SELL RISK"?"sell":"hold",liveValuation:{...(c.liveValuation||{}),provider:"Card Detail Scan",compCount:scan.acceptedCount,median:scan.currentMedian??undefined,confidence:scan.confidence,savedAt:scan.scannedAt}}:c);localStorage.setItem(CARD_KEY,JSON.stringify(next));window.dispatchEvent(new Event("cardsignal:user-cards-changed"));setCard(next.find(c=>c.id===card.id)||card)}catch(e){setError(e instanceof Error?e.message:"Card scan failed")}finally{setScanning(false)}};
 
-function marketFor(player: string, meta: string) {
-  const seed = hashText(`${player}|${meta}`);
-  return Math.round((48 + (seed % 430) + ((seed >> 4) % 100) / 100) * 100) / 100;
-}
-
-function parseMove(value: string) {
-  const parsed = Number.parseFloat(value.replace(/[^0-9+.-]/g, ""));
-  return Number.isFinite(parsed) ? parsed : 0;
-}
-
-function buildBreakdown(card: DetailCard) {
-  const seed = hashText(`${card.key}|${card.scanCount}`);
-  const clamp = (value: number) => Math.max(32, Math.min(96, value));
-  return [
-    ["Price momentum", clamp(card.score + ((seed % 11) - 5))],
-    ["Sales velocity", clamp(card.score - 3 + (((seed >> 3) % 17) - 8))],
-    ["Supply pressure", clamp(100 - Math.abs(68 - card.score) + (((seed >> 6) % 9) - 4))],
-    ["Market interest", clamp(card.score + 4 + (((seed >> 9) % 13) - 6))],
-  ] as const;
-}
-
-function insightFor(card: DetailCard) {
-  if (card.recommendation === "BUY") return "Sales velocity is improving while supply remains controlled. The card is showing confirmed upward pressure rather than a single isolated sale.";
-  if (card.recommendation === "SELL") return "Supply is outrunning demand and the latest price action is weakening. CardSignal is flagging elevated downside risk until buyers absorb the excess inventory.";
-  return "Price, inventory, and demand are relatively balanced. The card is moving, but there is not enough confirmation yet for a strong buy or sell signal.";
-}
-
-function getAddedCard(player: string, meta: string) {
-  try {
-    const added = JSON.parse(localStorage.getItem("cardsignal-added-cards") || "[]");
-    return added.find((item: { player?: string; meta?: string }) => item.player === player && item.meta === meta) || added.find((item: { player?: string }) => item.player === player);
-  } catch {
-    return null;
-  }
-}
-
-function readPersisted(): PersistedMap {
-  try {
-    return JSON.parse(localStorage.getItem("cardsignal-card-detail-state") || "{}");
-  } catch {
-    return {};
-  }
-}
-
-export default function CardDetailLayer() {
-  const [card, setCard] = useState<DetailCard | null>(null);
-  const [reanalyzing, setReanalyzing] = useState(false);
-  const [step, setStep] = useState(0);
-
-  const breakdown = useMemo(() => card ? buildBreakdown(card) : [], [card]);
-
-  useEffect(() => {
-    document.body.classList.add("cs-detail-enabled");
-
-    const handleClick = (event: MouseEvent) => {
-      const target = event.target as HTMLElement;
-      if (target.closest(".cs-detail-modal") || target.closest(".cs-modal")) return;
-      const row = target.closest<HTMLElement>(".signal-row");
-      if (!row) return;
-
-      const player = row.querySelector<HTMLElement>(".signal-copy strong")?.textContent?.trim();
-      const meta = row.querySelector<HTMLElement>(".signal-copy span")?.textContent?.trim() || "Card details unavailable";
-      const scoreText = row.querySelector<HTMLElement>(".score-pill b")?.textContent || "60";
-      const moveText = row.querySelector<HTMLElement>(".score-pill small")?.textContent || "0";
-      if (!player) return;
-
-      const key = `${player}|${meta}`;
-      const persisted = readPersisted()[key] || {};
-      const added = getAddedCard(player, meta);
-      const score = Number(persisted.score ?? Number.parseInt(scoreText, 10) ?? 60);
-      const move = Number(persisted.move ?? parseMove(moveText));
-      const marketValue = Number(persisted.marketValue ?? added?.marketValue ?? marketFor(player, meta));
-      const recommendation = (persisted.recommendation as DetailCard["recommendation"] | undefined) ?? recommendationFor(score);
-      const confidence = (persisted.confidence as DetailCard["confidence"] | undefined) ?? confidenceFor(score);
-
-      setCard({
-        key,
-        player,
-        meta,
-        score,
-        move,
-        marketValue,
-        recommendation,
-        confidence,
-        lastScan: String(persisted.lastScan ?? "2 min ago"),
-        scanCount: Number(persisted.scanCount ?? 0),
-      });
-      setReanalyzing(false);
-      setStep(0);
-    };
-
-    document.addEventListener("click", handleClick);
-    return () => {
-      document.removeEventListener("click", handleClick);
-      document.body.classList.remove("cs-detail-enabled");
-    };
-  }, []);
-
-  useEffect(() => {
-    if (!card) return;
-    const onKey = (event: KeyboardEvent) => {
-      if (event.key === "Escape") setCard(null);
-    };
-    window.addEventListener("keydown", onKey);
-    return () => window.removeEventListener("keydown", onKey);
-  }, [card]);
-
-  useEffect(() => {
-    if (!reanalyzing || !card) return;
-    if (step < detailSteps.length) {
-      const timer = window.setTimeout(() => setStep((value) => value + 1), 520);
-      return () => window.clearTimeout(timer);
-    }
-
-    const seed = hashText(`${card.key}|reanalyze|${card.scanCount + 1}`);
-    let delta = (seed % 15) - 7;
-    if (delta === 0) delta = seed % 2 === 0 ? 3 : -3;
-    const nextScore = Math.max(36, Math.min(96, card.score + delta));
-    const nextMove = Math.round((card.move + delta * 0.7) * 10) / 10;
-    const nextMarket = Math.max(5, Math.round(card.marketValue * (1 + nextMove / 1000) * 100) / 100);
-    const nextRecommendation = recommendationFor(nextScore);
-    const nextConfidence = confidenceFor(nextScore);
-    const nextCard: DetailCard = {
-      ...card,
-      score: nextScore,
-      move: nextMove,
-      marketValue: nextMarket,
-      recommendation: nextRecommendation,
-      confidence: nextConfidence,
-      lastScan: "just now",
-      scanCount: card.scanCount + 1,
-    };
-
-    const persisted = readPersisted();
-    persisted[card.key] = nextCard;
-    localStorage.setItem("cardsignal-card-detail-state", JSON.stringify(persisted));
-
-    const rows = Array.from(document.querySelectorAll<HTMLElement>(".signal-row"));
-    const matching = rows.find((row) => {
-      const name = row.querySelector<HTMLElement>(".signal-copy strong")?.textContent?.trim();
-      const meta = row.querySelector<HTMLElement>(".signal-copy span")?.textContent?.trim();
-      return name === card.player && meta === card.meta;
-    });
-    if (matching) {
-      const pill = matching.querySelector<HTMLElement>(".score-pill");
-      const mini = matching.querySelector<HTMLElement>(".mini-card");
-      const scoreNode = pill?.querySelector<HTMLElement>("b");
-      const moveNode = pill?.querySelector<HTMLElement>("small");
-      if (scoreNode) scoreNode.textContent = String(nextScore);
-      if (moveNode) moveNode.textContent = `${nextMove >= 0 ? "+" : ""}${nextMove}%`;
-      const tone = nextRecommendation === "BUY" ? "buy" : nextRecommendation === "SELL" ? "sell" : "hold";
-      pill?.classList.remove("buy", "sell", "hold");
-      pill?.classList.add(tone);
-      mini?.classList.remove("mini-buy", "mini-sell", "mini-hold");
-      mini?.classList.add(`mini-${tone}`);
-    }
-
-    try {
-      const added = JSON.parse(localStorage.getItem("cardsignal-added-cards") || "[]");
-      const updatedAdded = added.map((item: { player?: string; meta?: string }) => item.player === card.player && (item.meta === card.meta || !item.meta)
-        ? { ...item, score: nextScore, move: `${nextMove >= 0 ? "+" : ""}${nextMove}%`, marketValue: nextMarket, tone: nextRecommendation === "BUY" ? "buy" : nextRecommendation === "SELL" ? "sell" : "hold" }
-        : item);
-      localStorage.setItem("cardsignal-added-cards", JSON.stringify(updatedAdded));
-    } catch {}
-
-    const alertsPanel = document.querySelector<HTMLElement>(".alerts-panel");
-    if (alertsPanel) {
-      const alert = document.createElement("div");
-      const tone = delta > 0 ? "buy" : "sell";
-      alert.className = `alert ${tone} cs-generated-alert`;
-      alert.innerHTML = `<i>${delta > 0 ? "▲" : "▼"}</i><div><b>${delta > 0 ? "Momentum strengthened" : "Momentum weakened"}</b><p>${card.player.replace(/[<>]/g, "")} moved ${card.score} → ${nextScore}.</p><small>just now</small></div>`;
-      const firstAlert = alertsPanel.querySelector(".alert");
-      if (firstAlert) alertsPanel.insertBefore(alert, firstAlert);
-      else alertsPanel.appendChild(alert);
-    }
-
-    setCard(nextCard);
-    setReanalyzing(false);
-    setStep(0);
-  }, [reanalyzing, step, card]);
-
-  if (!card) return null;
-
-  return (
-    <div className="cs-detail-backdrop" onMouseDown={(event) => event.target === event.currentTarget && setCard(null)}>
-      <section className="cs-detail-modal" role="dialog" aria-modal="true" aria-label={`${card.player} card details`}>
-        <button className="cs-detail-close" onClick={() => setCard(null)} aria-label="Close">×</button>
-
-        <div className="cs-detail-head">
-          <div>
-            <span className="cs-detail-kicker">CARD SIGNAL</span>
-            <h2>{card.player}</h2>
-            <p>{card.meta}</p>
-          </div>
-          <span className={`cs-detail-rec ${card.recommendation.toLowerCase()}`}>{card.recommendation}</span>
-        </div>
-
-        <div className="cs-detail-grid">
-          <div className="cs-detail-cardart">
-            <img src="/assets/cropped/cards/slab-frame-large.png" alt="" />
-            <div className="cs-detail-initials">{card.player.split(/\s+/).map((part) => part[0]).join("").slice(0, 2).toUpperCase()}</div>
-          </div>
-
-          <div className="cs-detail-summary">
-            <div className="cs-detail-scorebox"><small>MOMENTUM SCORE</small><strong>{card.score}</strong><span>{card.confidence} CONFIDENCE</span></div>
-            <div className="cs-detail-market"><small>EST. MARKET</small><strong>${card.marketValue.toFixed(2)}</strong><span className={card.move >= 0 ? "positive" : "negative"}>{card.move >= 0 ? "+" : ""}{card.move}% / 7D</span></div>
-            <div className="cs-detail-last"><span>LAST SCAN</span><b>{card.lastScan}</b></div>
-          </div>
-        </div>
-
-        <div className="cs-detail-breakdown">
-          <div className="cs-detail-section-title"><span>SIGNAL BREAKDOWN</span><b>Why CardSignal sees it this way</b></div>
-          {breakdown.map(([label, value]) => (
-            <div className="cs-detail-metric" key={label}>
-              <div><span>{label}</span><b>{value}</b></div>
-              <div className="cs-detail-track"><i style={{ width: `${value}%` }} /></div>
-            </div>
-          ))}
-        </div>
-
-        <div className="cs-detail-insight"><span>CARDSIGNAL INSIGHT</span><p>{insightFor(card)}</p></div>
-
-        {reanalyzing ? (
-          <div className="cs-detail-rescan">
-            <div className="cs-detail-scanline"><i style={{ width: `${Math.min(100, (step / detailSteps.length) * 100)}%` }} /></div>
-            <strong>Re-analyzing market…</strong>
-            <div>{detailSteps.map((item, index) => <span key={item} className={index < step ? "done" : index === step ? "active" : ""}>{index < step ? "✓" : "•"} {item}</span>)}</div>
-          </div>
-        ) : (
-          <button className="cs-detail-analyze" onClick={() => { setStep(0); setReanalyzing(true); }}><img src="/assets/cropped/icons/action-search.png" alt="" /> ANALYZE NOW</button>
-        )}
-      </section>
-
-      <style jsx global>{`
-        .cs-detail-enabled .signal-row{cursor:pointer;transition:background .18s ease,transform .18s ease}.cs-detail-enabled .signal-row:hover{background:rgba(55,198,255,.035);transform:translateX(2px)}
-        .cs-detail-backdrop{position:fixed;inset:0;z-index:1100;display:grid;place-items:center;padding:22px;background:rgba(0,7,12,.8);backdrop-filter:blur(14px)}
-        .cs-detail-modal{position:relative;width:min(860px,96vw);max-height:92vh;overflow:auto;padding:30px;border:1px solid rgba(73,205,255,.22);border-radius:20px;background:linear-gradient(155deg,#081d2e,#04111d 62%,#061821);box-shadow:0 42px 120px rgba(0,0,0,.72);color:#effaff}.cs-detail-modal:before{content:"";position:absolute;left:0;top:0;width:210px;height:2px;background:linear-gradient(90deg,#48f19c,transparent);box-shadow:0 0 18px rgba(72,241,156,.65)}
-        .cs-detail-close{position:absolute;right:18px;top:16px;width:34px;height:34px;border:1px solid rgba(102,189,224,.16);border-radius:9px;background:#071724;color:#8cabbd;font-size:24px;cursor:pointer}.cs-detail-head{display:flex;justify-content:space-between;gap:24px;align-items:flex-start;padding-right:46px}.cs-detail-kicker{color:#53d9ff;font-size:10px;font-weight:900;letter-spacing:.18em}.cs-detail-head h2{margin:7px 0 4px;font-size:31px;letter-spacing:-.04em}.cs-detail-head p{margin:0;color:#7896a8;font-size:12px}.cs-detail-rec{margin-top:22px;padding:8px 12px;border-radius:8px;font-size:11px;font-weight:900;letter-spacing:.12em}.cs-detail-rec.buy{color:#77ffb5;border:1px solid rgba(71,242,158,.3);background:rgba(46,198,126,.1)}.cs-detail-rec.sell{color:#ff8996;border:1px solid rgba(255,91,111,.3);background:rgba(211,50,71,.09)}.cs-detail-rec.hold{color:#74ddff;border:1px solid rgba(72,210,255,.28);background:rgba(42,151,196,.08)}
-        .cs-detail-grid{display:grid;grid-template-columns:210px 1fr;gap:28px;align-items:center;margin:26px 0}.cs-detail-cardart{position:relative;height:265px;display:grid;place-items:center}.cs-detail-cardart>img{position:absolute;inset:0;width:100%;height:100%;object-fit:contain;opacity:.9;filter:drop-shadow(0 18px 30px rgba(0,0,0,.45))}.cs-detail-initials{position:relative;z-index:2;font-size:44px;font-weight:900;color:#dff7ff;text-shadow:0 0 24px rgba(64,216,255,.25)}.cs-detail-summary{display:grid;grid-template-columns:1fr 1fr;gap:12px}.cs-detail-scorebox,.cs-detail-market,.cs-detail-last{border:1px solid rgba(75,188,228,.13);border-radius:12px;background:rgba(8,27,42,.7);padding:16px}.cs-detail-scorebox small,.cs-detail-market small,.cs-detail-last span{display:block;color:#6e8fa3;font-size:9px;font-weight:900;letter-spacing:.14em}.cs-detail-scorebox strong{display:block;font-size:64px;line-height:1;margin:8px 0;color:#effcff}.cs-detail-scorebox span{color:#75f4b1;font-size:9px;font-weight:900;letter-spacing:.09em}.cs-detail-market strong{display:block;font-size:28px;margin:12px 0 8px}.cs-detail-market span{font-size:11px}.cs-detail-last{grid-column:1/-1;display:flex;justify-content:space-between;align-items:center}.cs-detail-last b{font-size:12px;color:#c4dce8}
-        .cs-detail-breakdown{margin-top:8px;border-top:1px solid rgba(80,180,220,.11);padding-top:20px}.cs-detail-section-title{display:flex;justify-content:space-between;margin-bottom:16px}.cs-detail-section-title span{color:#54d9ff;font-size:9px;font-weight:900;letter-spacing:.15em}.cs-detail-section-title b{font-size:12px;color:#d7eaf3}.cs-detail-metric{margin:12px 0}.cs-detail-metric>div:first-child{display:flex;justify-content:space-between;color:#9db5c3;font-size:11px}.cs-detail-metric b{color:#e8f8ff}.cs-detail-track{height:7px;margin-top:6px;border-radius:8px;background:#081822;border:1px solid rgba(89,184,222,.08);overflow:hidden}.cs-detail-track i{display:block;height:100%;border-radius:8px;background:linear-gradient(90deg,#18aaca,#48efa2);box-shadow:0 0 12px rgba(65,232,163,.25)}
-        .cs-detail-insight{margin:20px 0;border:1px solid rgba(69,201,246,.16);border-radius:11px;background:rgba(17,72,98,.11);padding:14px}.cs-detail-insight span{color:#55d9ff;font-size:9px;font-weight:900;letter-spacing:.13em}.cs-detail-insight p{margin:7px 0 0;color:#9fb8c7;font-size:12px;line-height:1.55}.cs-detail-analyze{width:100%;height:46px;border:1px solid rgba(60,241,153,.46);border-radius:9px;background:linear-gradient(180deg,rgba(47,226,136,.21),rgba(16,90,62,.14));color:#c7ffe0;font-size:11px;font-weight:900;letter-spacing:.1em;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:8px}.cs-detail-analyze img{width:20px;height:20px;object-fit:contain}.cs-detail-rescan{border:1px solid rgba(62,211,255,.15);border-radius:11px;padding:15px;background:rgba(6,23,36,.72)}.cs-detail-scanline{height:5px;background:#07151f;border-radius:8px;overflow:hidden;margin-bottom:12px}.cs-detail-scanline i{display:block;height:100%;background:linear-gradient(90deg,#1eb1d1,#4cf0a5)}.cs-detail-rescan strong{display:block;margin-bottom:9px}.cs-detail-rescan>div:last-child{display:grid;grid-template-columns:repeat(2,1fr);gap:6px}.cs-detail-rescan span{font-size:10px;color:#668394}.cs-detail-rescan span.active{color:#5fdcff}.cs-detail-rescan span.done{color:#68efaa}.positive{color:#55efa4!important}.negative{color:#ff6678!important}.cs-generated-alert{animation:csAlertIn .28s ease both}@keyframes csAlertIn{from{opacity:0;transform:translateY(-6px)}to{opacity:1;transform:none}}
-        @media(max-width:680px){.cs-detail-modal{padding:22px}.cs-detail-grid{grid-template-columns:1fr}.cs-detail-cardart{height:220px}.cs-detail-summary{grid-template-columns:1fr 1fr}.cs-detail-section-title{flex-direction:column;gap:5px}.cs-detail-rescan>div:last-child{grid-template-columns:1fr}}
-      `}</style>
-    </div>
-  );
+ if(!card)return null;const s=card.marketScan;const cardHistory=[...(history||[])];if(s&&!cardHistory.some(h=>h.scannedAt===s.scannedAt))cardHistory.push({id:`${card.id}-${s.scannedAt}`,cardId:card.id,player:card.player,meta:card.meta||"",scannedAt:s.scannedAt,acceptedCount:s.acceptedCount,currentMedian:s.currentMedian,change7d:s.change7d,velocity:s.velocity,pulse:s.pulse,confidence:s.confidence});const sales=s?.acceptedSales||[];const pulse=s?.pulse||"NOT ENOUGH DATA";const t=tone(pulse);
+ return <div className="cs-detail-backdrop" onMouseDown={e=>e.target===e.currentTarget&&setCard(null)}><section className="cs-detail-modal" role="dialog" aria-modal="true"><button className="cs-detail-close" onClick={()=>setCard(null)}>×</button>
+  <div className="cs-detail-head"><div><span className="cs-detail-kicker">CARD MARKET TERMINAL</span><h2>{card.player}</h2><p>{card.meta||[card.year,card.setName,card.cardNumber&&`#${card.cardNumber}`].filter(Boolean).join(" · ")}</p></div><span className={`cs-detail-rec ${t}`}>{pulse}</span></div>
+  <div className="cs-md-top"><div className="cs-detail-cardart">{card.image?<img className="cs-md-user-image" src={card.image} alt=""/>:<><img src="/assets/cropped/cards/slab-frame-large.png" alt=""/><div className="cs-detail-initials">{initials(card.player)}</div></>}</div><div className="cs-md-stats"><div><small>CURRENT MEDIAN</small><strong>{money(s?.currentMedian??card.marketValue)}</strong><span>{s?`${s.acceptedCount} accepted market matches`:"No current scan"}</span></div><div><small>7D MOVEMENT</small><strong className={(s?.change7d??0)<0?"negative":"positive"}>{pct(s?.change7d)}</strong><span>{s?.change7d==null?"Needs dated sales in both windows":"recent median vs prior 8–30D median"}</span></div><div><small>PRIOR SCAN MEDIAN</small><strong>{money(previous?.currentMedian)}</strong><span>{previous?new Date(previous.scannedAt).toLocaleString():"Run another scan later"}</span></div><div><small>SALES VELOCITY</small><strong>{s?.velocity??"—"}<em>{s?.velocity!=null?"/100":""}</em></strong><span>{s?`${s.recentSales} accepted sales in last 7D`:"Not scanned"}</span></div></div></div>
+  <div className="cs-md-evidence"><div><small>SIGNAL CONFIDENCE</small><b>{s?.confidence||"NO SCAN"}</b></div><div><small>ACCEPTED / REJECTED</small><b>{s?`${s.acceptedCount} / ${s.rejectedCount}`:"—"}</b></div><div><small>LAST SCAN</small><b>{s?new Date(s.scannedAt).toLocaleString():"Never"}</b></div><button onClick={rescan} disabled={scanning}>{scanning?"SCANNING THIS CARD…":"◉ RESCAN THIS CARD"}</button></div>{error&&<div className="cs-md-error">{error}</div>}
+  <div className="cs-md-columns"><article className="cs-md-panel"><div className="cs-md-title"><span>PRICE HISTORY</span><b>Saved CardSignal scans</b></div><HistoryChart points={cardHistory}/></article><article className="cs-md-panel"><div className="cs-md-title"><span>CHANGE TIMELINE</span><b>Material alerts for this card</b></div><div className="cs-md-timeline">{alerts.length?alerts.map(a=><div key={a.id} className={`cs-md-event ${a.kind}`}><i>{a.kind==="buy"?"▲":a.kind==="sell"?"▼":a.kind==="resolved"?"✓":"◎"}</i><div><small>{new Date(a.createdAt).toLocaleString()}</small><strong>{a.title}</strong><span>{a.detail}</span></div></div>):<div className="cs-md-empty compact"><b>No material changes yet</b><span>Repeated scans will populate this timeline.</span></div>}</div></article></div>
+  <article className="cs-md-panel cs-md-sales"><div className="cs-md-title"><span>LATEST ACCEPTED MARKET MATCHES</span><b>{sales.length?`${sales.length} most recent from this scan`:"Rescan this card to load the latest accepted sales"}</b></div>{sales.length?<div className="cs-md-sales-list">{sales.slice(0,8).map((sale,i)=><div key={`${sale.source}-${sale.id}-${i}`}><div><strong>{sale.title}</strong><span>{sale.source} · {sale.marketplace}{sale.date?` · ${new Date(sale.date).toLocaleDateString()}`:""}</span></div><b>{money(sale.price)}</b></div>)}</div>:<div className="cs-md-empty compact"><b>No stored sale rows yet</b><span>The existing portfolio scan saved aggregates only. Click RESCAN THIS CARD once to attach the accepted sales to this card.</span></div>}</article>
+  <div className="cs-md-foot">CardSignal does not manufacture history. Price charts use only saved scans, and the sales table shows only market listings that passed the current identity filter.</div>
+ </section><style jsx global>{`
+ .cs-detail-enabled .signal-row,.cs-detail-enabled .cs-pulse-row{cursor:pointer}.cs-detail-backdrop{position:fixed;inset:0;z-index:1510;display:grid;place-items:center;padding:22px;background:rgba(0,7,12,.88);backdrop-filter:blur(15px)}.cs-detail-modal{position:relative;width:min(1080px,97vw);max-height:94vh;overflow:auto;padding:28px;border:1px solid rgba(73,205,255,.22);border-radius:20px;background:linear-gradient(155deg,#081d2e,#04111d 62%,#061821);box-shadow:0 44px 130px rgba(0,0,0,.78);color:#effaff}.cs-detail-modal:before{content:"";position:absolute;left:0;top:0;width:260px;height:2px;background:linear-gradient(90deg,#48f19c,transparent)}.cs-detail-close{position:absolute;right:18px;top:16px;width:34px;height:34px;border:1px solid rgba(102,189,224,.16);border-radius:9px;background:#071724;color:#8cabbd;font-size:24px;cursor:pointer}.cs-detail-head{display:flex;justify-content:space-between;gap:20px;padding-right:46px}.cs-detail-kicker{color:#55dfff;font-size:9px;font-weight:900;letter-spacing:.17em}.cs-detail-head h2{margin:7px 0 4px;font-size:30px}.cs-detail-head p{margin:0;color:#7f9cac;font-size:11px}.cs-detail-rec{align-self:center;padding:8px 12px;border:1px solid rgba(83,205,245,.25);border-radius:8px;color:#82dff7;font-size:9px;font-weight:900;letter-spacing:.09em}.cs-detail-rec.buy{color:#6af0a9;border-color:rgba(70,239,154,.35)}.cs-detail-rec.sell{color:#ff8493;border-color:rgba(255,104,124,.35)}.cs-detail-rec.watch{color:#efc86e;border-color:rgba(239,200,110,.3)}.cs-md-top{display:grid;grid-template-columns:190px 1fr;gap:20px;margin:22px 0}.cs-detail-cardart{position:relative;height:225px;display:grid;place-items:center}.cs-detail-cardart>img:not(.cs-md-user-image){position:absolute;inset:0;width:100%;height:100%;object-fit:contain}.cs-md-user-image{width:100%;height:100%;object-fit:contain;border-radius:10px}.cs-detail-initials{position:relative;z-index:2;font-size:40px;font-weight:900}.cs-md-stats{display:grid;grid-template-columns:1fr 1fr;gap:9px}.cs-md-stats>div,.cs-md-evidence>div{padding:13px;border:1px solid rgba(77,188,228,.12);border-radius:10px;background:rgba(7,25,39,.72)}.cs-md-stats small,.cs-md-evidence small{display:block;color:#67899b;font-size:7px;font-weight:900;letter-spacing:.1em}.cs-md-stats strong{display:block;margin:6px 0 3px;font-size:23px}.cs-md-stats strong em{font-style:normal;font-size:10px;color:#7795a5}.cs-md-stats span{color:#668797;font-size:8px}.positive{color:#5eeaa0!important}.negative{color:#ff7b8b!important}.cs-md-evidence{display:grid;grid-template-columns:1fr 1fr 1.2fr auto;gap:8px;margin-bottom:15px}.cs-md-evidence b{display:block;margin-top:5px;font-size:10px;color:#d7eaf3}.cs-md-evidence button{padding:0 16px;border:1px solid rgba(66,239,154,.4);border-radius:9px;background:rgba(43,194,122,.1);color:#9affc5;font-size:8px;font-weight:900;letter-spacing:.08em;cursor:pointer}.cs-md-evidence button:disabled{opacity:.45}.cs-md-error{margin-bottom:12px;padding:10px;border:1px solid rgba(255,100,120,.28);border-radius:8px;background:rgba(160,35,50,.1);color:#ff9cab;font-size:9px}.cs-md-columns{display:grid;grid-template-columns:1.15fr .85fr;gap:10px}.cs-md-panel{padding:15px;border:1px solid rgba(77,188,228,.12);border-radius:11px;background:rgba(5,20,32,.62)}.cs-md-title{display:flex;justify-content:space-between;gap:12px;margin-bottom:10px}.cs-md-title span{color:#55dfff;font-size:8px;font-weight:900;letter-spacing:.12em}.cs-md-title b{color:#8ca8b7;font-size:8px;font-weight:600}.cs-md-chart{position:relative;height:190px;color:#55efa2}.cs-md-chart svg{width:100%;height:160px;overflow:visible}.cs-md-chart-labels{position:absolute;inset:0 auto auto 0;display:flex;flex-direction:column;justify-content:space-between;height:142px;color:#6f8d9d;font-size:7px}.cs-md-chart-dates{display:flex;justify-content:space-between;color:#668494;font-size:7px}.cs-md-empty{min-height:160px;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:20px;border:1px dashed rgba(77,188,228,.13);border-radius:9px;color:#d1e5ee}.cs-md-empty.compact{min-height:90px}.cs-md-empty span{max-width:430px;margin-top:6px;color:#688797;font-size:8px;line-height:1.5}.cs-md-timeline{display:flex;flex-direction:column;gap:6px;max-height:190px;overflow:auto}.cs-md-event{display:grid;grid-template-columns:28px 1fr;gap:8px;padding:8px;border-bottom:1px solid rgba(78,183,224,.08)}.cs-md-event>i{width:25px;height:25px;display:grid;place-items:center;border:1px solid rgba(87,193,231,.16);border-radius:50%;font-style:normal;color:#78dbf6}.cs-md-event.sell>i{color:#ff7f8f}.cs-md-event.buy>i{color:#5eeaa0}.cs-md-event small,.cs-md-event strong,.cs-md-event span{display:block}.cs-md-event small{color:#607f90;font-size:6px}.cs-md-event strong{margin-top:2px;font-size:9px}.cs-md-event span{margin-top:2px;color:#7592a2;font-size:7px}.cs-md-sales{margin-top:10px}.cs-md-sales-list{display:flex;flex-direction:column}.cs-md-sales-list>div{display:grid;grid-template-columns:1fr auto;gap:15px;align-items:center;padding:9px 4px;border-top:1px solid rgba(78,183,224,.08)}.cs-md-sales-list>div:first-child{border-top:0}.cs-md-sales-list strong,.cs-md-sales-list span{display:block}.cs-md-sales-list strong{font-size:9px}.cs-md-sales-list span{margin-top:3px;color:#688797;font-size:7px}.cs-md-sales-list>div>b{font-size:11px}.cs-md-foot{margin-top:11px;color:#5f7d8e;font-size:7px;line-height:1.5;text-align:center}@media(max-width:760px){.cs-md-top{grid-template-columns:1fr}.cs-detail-cardart{height:200px}.cs-md-evidence{grid-template-columns:1fr 1fr}.cs-md-evidence button{height:42px;grid-column:1/-1}.cs-md-columns{grid-template-columns:1fr}.cs-md-stats{grid-template-columns:1fr 1fr}}`}</style></div>
 }
