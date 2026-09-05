@@ -9,6 +9,7 @@ import ValuationOverride from "./valuation-override";
 import DataSourcesLayer from "./data-sources-layer";
 import SignalLabLayer from "./signal-lab-layer";
 import SignalLabFallbackLayer from "./signal-lab-fallback-layer";
+import PhotoCatalogGuardLayer from "./photo-catalog-guard-layer";
 import PhotoOcrFallbackLayer from "./photo-ocr-fallback-layer";
 import "./globals.css";
 import "./asset-overrides.css";
@@ -44,6 +45,7 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
         <DataSourcesLayer />
         <SignalLabLayer />
         <SignalLabFallbackLayer />
+        <PhotoCatalogGuardLayer />
         <PhotoOcrFallbackLayer />
       </body>
     </html>
