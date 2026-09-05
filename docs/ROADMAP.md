@@ -9,14 +9,15 @@ CardSignal's core product goal is to detect conditions that may precede sports-c
 - 7-day price movement, accepted-sale count, sales velocity, confidence, and unified CardSignal Score
 - Scan history, alerts, Action Center, Opportunity Feed, Decision Journal
 - News/catalyst tracking and catalyst integration into card detail / Action Center
+- Catalyst Event History preserving first-seen and last-seen timestamps for later outcome validation
 - Discovery Radar for out-of-portfolio players with configurable price bands
 - Market Scout for broad headline-driven discovery
 - Supply Watch foundation for active eBay listings
 - Grading Population history model with manual/API-ready snapshots and card-detail trend UI
 - Portfolio-wide grading population alert view
 - Segment Explorer for sport, era, role, grade status, and catalyst-sensitivity concentration
-- League-aware portfolio filtering with explicit per-card league override
-- Player Performance snapshot model, Card Detail context, and portfolio-wide Performance Watch
+- Player Performance model, card-detail panel, and portfolio-wide Performance Watch
+- Portfolio league filtering with explicit league overrides
 
 ## Leading-indicator roadmap
 
@@ -27,28 +28,18 @@ CardSignal's core product goal is to detect conditions that may precede sports-c
 - [x] Card Market Segmentation: classify cards by era, rookie/prospect indicators, grade/raw status, and scarcity clues from identity text
 - [x] Catalyst Sensitivity Context: show that rookies, prospect cards, numbered parallels, autos, SSPs, and low-supply cards may react differently from modern base cards without yet modifying the CardSignal Score
 - [x] Surface market-context and velocity-acceleration evidence in individual Card Detail
-- [x] League filters for MLB / NBA / WNBA / NFL / NHL / soccer / college / other
-- [x] Explicit card-level league assignment so filtering does not depend only on inference
 - [ ] Use segmentation in Opportunity Feed / Discovery ranking after enough validation
 
 ### P1 — high-value data integrations
 
-- [~] Player Performance Engine
-  - [x] reusable performance snapshot schema and signal model
-  - [x] recent-vs-baseline comparison
-  - [x] SURGING / IMPROVING / STEADY / COOLING / SLUMPING states
-  - [x] Card Detail performance context
-  - [x] portfolio-wide Performance Watch with league filters
-  - [x] manual/API source tagging
-  - [ ] connect live MLB box-score / player-stat source
-  - [ ] connect live NBA player-stat source
-  - [ ] connect live WNBA player-stat source
-  - [ ] connect live NFL player-stat source
-  - [ ] add NHL source when reliable
-  - [ ] streaks / season highs / role changes from structured feeds
+- [~] Player Performance Engine for MLB / NBA / WNBA / NFL
+  - [x] normalized performance snapshot model and direction/confidence logic
+  - [x] card-detail performance panel
+  - [x] portfolio-wide Performance Watch
+  - [ ] live box-score deltas vs season baseline
+  - [ ] streaks / season highs / role changes from live feeds
   - [ ] transactions / call-ups / injuries / starting-status changes
-  - [ ] performance alerts for meaningful new state changes
-  - [ ] validate performance state against later card-price outcomes before score integration
+  - [ ] independent live performance catalyst separate from headline sentiment
 - [~] Grading Population Monitor
   - [x] population snapshot/history schema by exact saved card, provider, and grade
   - [x] card-detail population monitor with baseline / growth status
@@ -70,7 +61,7 @@ CardSignal's core product goal is to detect conditions that may precede sports-c
 
 ### P2 — broader market context
 
-- [x] Sport and era segment views: MLB / NBA / NFL; vintage / modern / ultra-modern
+- [x] Sport and era segment views: MLB / NBA / WNBA / NFL; vintage / modern / ultra-modern
 - [x] Rookie / prospect / veteran grouping view
 - [x] Raw / graded / grader-grade grouping view using available saved identity data
 - [ ] GOAT grouping rules after a reliable player classification source exists
@@ -80,7 +71,7 @@ CardSignal's core product goal is to detect conditions that may precede sports-c
 
 ### P3 — historical learning
 
-- [ ] Catalyst event history with first-seen timestamps
+- [x] Catalyst event history with first-seen timestamps
 - [ ] Correlate catalysts with later scan outcomes without claiming causation
 - [ ] Historical analog matching: similar catalyst + velocity + segment profiles
 - [ ] Measure outcome rates at 24h / 3d / 7d / 30d
