@@ -1,0 +1,84 @@
+{
+  "version": 1,
+  "targetSize": 300,
+  "maxApplicationCards": 500,
+  "status": "identity-curation-pending",
+  "leagueTargets": {
+    "MLB": 75,
+    "NBA": 60,
+    "NFL": 55,
+    "WNBA": 30,
+    "NHL": 25,
+    "SOCCER": 25,
+    "COLLEGE_OTHER": 30
+  },
+  "eraTargets": {
+    "VINTAGE_PRE1980": 30,
+    "JUNK_WAX_1980_1995": 30,
+    "MODERN_1996_2017": 75,
+    "ULTRA_MODERN_2018_PLUS": 165
+  },
+  "roleTargets": [
+    "VETERAN_STAR",
+    "ROOKIE_PROSPECT",
+    "EMERGING",
+    "RETIRED_VINTAGE"
+  ],
+  "productTargets": [
+    "BASE_FLAGSHIP",
+    "FLAGSHIP_PARALLEL",
+    "NUMBERED_PARALLEL",
+    "AUTOGRAPH",
+    "INSERT_SSP"
+  ],
+  "gradeTargets": [
+    "RAW",
+    "PSA_9",
+    "PSA_10",
+    "OTHER_GRADED"
+  ],
+  "liquidityTargets": [
+    "HIGH",
+    "MEDIUM",
+    "SCARCE"
+  ],
+  "priceBandTargets": [
+    "UNDER_50",
+    "50_150",
+    "150_500",
+    "500_PLUS"
+  ],
+  "requiredIdentityFields": [
+    "player",
+    "year",
+    "setName",
+    "cardNumber",
+    "league"
+  ],
+  "optionalIdentityFields": [
+    "variant",
+    "grader",
+    "grade"
+  ],
+  "importFields": [
+    "player",
+    "year",
+    "setName",
+    "cardNumber",
+    "variant",
+    "league",
+    "mode",
+    "grader",
+    "grade",
+    "marketValue",
+    "purchasePrice"
+  ],
+  "curationRules": [
+    "Do not preload synthetic market signals, scan history, grading population, or catalyst outcomes.",
+    "Do not let one player, product family, grader, or price band dominate the set.",
+    "Prefer exact identities that can be resolved by CardSignal catalog sources.",
+    "Keep some low-liquidity identities so NEEDS DATA behavior is tested, but do not let them dominate.",
+    "Within major leagues include stars, rookies/prospects, emerging players, and retired/vintage names.",
+    "Use benchmark rows as watching by default until the lab-account ownership convention is finalized."
+  ]
+}
