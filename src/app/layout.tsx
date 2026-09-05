@@ -31,6 +31,7 @@ import MarketScoutLayer from "./market-scout-layer";
 import MarketContextLayer from "./market-context-layer";
 import GradingPopulationLayer from "./grading-population-layer";
 import GradingPopulationAlertsLayer from "./grading-population-alerts-layer";
+import SegmentExplorerLayer from "./segment-explorer-layer";
 import CloudAuthLayer from "./cloud-auth-layer";
 import CloudSyncLayer from "./cloud-sync-layer";
 import "./globals.css";
@@ -80,6 +81,7 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
         <MarketContextLayer />
         <GradingPopulationLayer />
         <GradingPopulationAlertsLayer />
+        <SegmentExplorerLayer />
         <CloudSyncLayer />
         <CloudAuthLayer />
       </body>
