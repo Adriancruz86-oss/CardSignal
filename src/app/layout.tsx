@@ -26,6 +26,7 @@ import CatalystIntegrationLayer from "./catalyst-integration-layer";
 import OpportunityFeedLayer from "./opportunity-feed-layer";
 import OpportunityActionsLayer from "./opportunity-actions-layer";
 import DecisionJournalLayer from "./decision-journal-layer";
+import DiscoveryRadarLayer from "./discovery-radar-layer";
 import "./globals.css";
 import "./asset-overrides.css";
 import "./live-market-click-fix.css";
@@ -67,6 +68,7 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
         <OpportunityFeedLayer />
         <OpportunityActionsLayer />
         <DecisionJournalLayer />
+        <DiscoveryRadarLayer />
       </body>
     </html>
   );
