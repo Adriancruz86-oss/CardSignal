@@ -40,6 +40,8 @@ import PortfolioLeagueFilterLayer from "./portfolio-league-filter-layer";
 import CardLeagueEditorLayer from "./card-league-editor-layer";
 import BenchmarkPortfolioLayer from "./benchmark-portfolio-layer";
 import BenchmarkHealthLayer from "./benchmark-health-layer";
+import BenchmarkScanReadinessLayer from "./benchmark-scan-readiness-layer";
+import ValidationCohortLayer from "./validation-cohort-layer";
 import CloudAuthLayer from "./cloud-auth-layer";
 import CloudSyncLayer from "./cloud-sync-layer";
 import "./globals.css";
@@ -98,6 +100,8 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
         <SegmentExplorerLayer />
         <BenchmarkPortfolioLayer />
         <BenchmarkHealthLayer />
+        <BenchmarkScanReadinessLayer />
+        <ValidationCohortLayer />
         <CloudSyncLayer />
         <CloudAuthLayer />
       </body>
