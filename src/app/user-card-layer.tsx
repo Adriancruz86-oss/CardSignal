@@ -34,6 +34,7 @@ type UserCard = {
 type SortMode="score"|"value"|"move"|"recent"|"name";
 type FilterMode="ALL"|ScorePulse;
 const STORAGE_KEY = "cardsignal-added-cards";
+const MAX_SAVED_CARDS = 500;
 
 function readCards(): UserCard[] {
   try {
@@ -53,10 +54,10 @@ function readCards(): UserCard[] {
   }
 }
 
-function saveCards(cards: UserCard[]) { localStorage.setItem(STORAGE_KEY, JSON.stringify(cards.slice(0, 100))); }
+function saveCards(cards: UserCard[]) { localStorage.setItem(STORAGE_KEY, JSON.stringify(cards.slice(0, MAX_SAVED_CARDS))); }
 function initials(name: string) { return name.split(/\s+/).filter(Boolean).map((part) => part[0]).join("").slice(0, 2).toUpperCase(); }
 function safeText(value: string) { return value.replace(/[<>]/g, ""); }
-function moveNumber(card:UserCard){return card.marketScan?.change7d==null?-9999:Number(card.marketScan.change7d)}
+function moveNumber(card:UserCard){return card.marketScan?.change7d==null?0:Number(card.marketScan.change7d)}
 function scanTime(card:UserCard){const t=card.marketScan?.scannedAt?new Date(card.marketScan.scannedAt).getTime():0;return Number.isFinite(t)?t:0}
 
 export default function UserCardLayer() {
