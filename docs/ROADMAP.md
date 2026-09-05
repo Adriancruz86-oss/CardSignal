@@ -11,6 +11,7 @@ CardSignal's core product goal is to detect conditions that may precede sports-c
 - News/catalyst tracking and catalyst integration into card detail / Action Center
 - Catalyst Event History preserving first-seen and last-seen timestamps for later outcome validation
 - Catalyst Outcome Lab matching first-seen events to later saved market scans at 24h / 3d / 7d / 30d horizons without interpolation
+- Catalyst category outcome tables for comparing observed behavior by event type without changing the unified score
 - Discovery Radar for out-of-portfolio players with configurable price bands
 - Market Scout for broad headline-driven discovery
 - Supply Watch foundation for active eBay listings
@@ -19,6 +20,17 @@ CardSignal's core product goal is to detect conditions that may precede sports-c
 - Segment Explorer for sport, era, role, grade status, and catalyst-sensitivity concentration
 - Player Performance model, card-detail panel, and portfolio-wide Performance Watch
 - Portfolio league filtering with explicit league overrides
+- Benchmark Portfolio Seeder for repeatable CSV/JSON test-account datasets up to 500 cards, with benchmark-only reset behavior
+
+## Internal validation / benchmark roadmap
+
+- [x] Benchmark CSV / JSON import format
+- [x] Benchmark-only tagging and safe reset that preserves real collector cards
+- [x] Raise primary portfolio editor capacity to 500 saved cards
+- [ ] Raise every remaining batch-scan/write path to the same 500-card-safe capacity before loading the full 300-card benchmark account
+- [ ] Curate the first ~300-card benchmark set across leagues, eras, grades, liquidity, price bands, rookie/veteran roles, and base/parallel/auto/scarcity profiles
+- [ ] Add scheduled background benchmark scans after Supabase/Vercel deployment
+- [ ] Add benchmark health metrics: cards scanned, exact-comp coverage, stale scans, catalyst coverage, performance coverage, and population coverage
 
 ## Leading-indicator roadmap
 
@@ -78,9 +90,12 @@ CardSignal's core product goal is to detect conditions that may precede sports-c
 - [~] Measure outcome rates at 24h / 3d / 7d / 30d
   - [x] card-level median change at each horizon when a nearby saved scan exists
   - [x] aggregate matched-count / median / average / positive-rate calculations
-  - [ ] category-by-category outcome tables after enough observations accumulate
+  - [x] category-by-category outcome tables
   - [ ] sport / era / card-role outcome breakdowns after enough observations accumulate
-- [ ] Learn which catalyst categories matter most by sport and card segment
+- [~] Learn which catalyst categories matter most by sport and card segment
+  - [x] descriptive category outcome layer
+  - [ ] minimum sample thresholds and confidence labels
+  - [ ] sport / era / scarcity breakdowns
 - [ ] Calibrate Catalyst Sensitivity weights only after sufficient labeled history
 - [ ] Decide whether validated signals should enter the unified CardSignal Score
 
