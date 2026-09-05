@@ -12,6 +12,7 @@ import SignalLabFallbackLayer from "./signal-lab-fallback-layer";
 import PhotoCatalogGuardLayer from "./photo-catalog-guard-layer";
 import PhotoOcrFallbackLayer from "./photo-ocr-fallback-layer";
 import PortfolioPulseLayer from "./portfolio-pulse-v2";
+import DashboardLiveLayer from "./dashboard-live-layer";
 import "./globals.css";
 import "./asset-overrides.css";
 import "./live-market-click-fix.css";
@@ -49,6 +50,7 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
         <PhotoCatalogGuardLayer />
         <PhotoOcrFallbackLayer />
         <PortfolioPulseLayer />
+        <DashboardLiveLayer />
       </body>
     </html>
   );
