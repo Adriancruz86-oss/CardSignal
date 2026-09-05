@@ -10,6 +10,7 @@ const TOOLS:Tool[]=[
  {label:"Data Sources",selector:".cs-sources-launch",icon:"●"},
  {label:"Live Market",selector:".cs-live-launch",icon:"◎"},
  {label:"Catalysts",selector:".cs-catalyst-launch",icon:"✦"},
+ {label:"Discovery",selector:".cs-discovery-launch",icon:"⌖"},
  {label:"Opportunities",selector:".cs-opportunity-launch",icon:"◆"},
  {label:"Journal",selector:".cs-journal-launch",icon:"▤"},
  {label:"Action Center",selector:".cs-ac-launch",icon:"⚡"},
@@ -67,7 +68,7 @@ export default function TopToolsNavLayer(){
  return createPortal(<>
   <div className="cs-top-tools-inner"><span className="cs-top-tools-label">TOOLS</span>{TOOLS.map(t=><button key={t.label} onClick={()=>openTool(t.selector)}><i>{t.icon}</i>{t.label}</button>)}</div>
   <style jsx global>{`
-   .cs-pulse-launch,.cs-signal-lab-launch,.cs-sources-launch,.cs-live-launch,.cs-catalyst-launch,.cs-opportunity-launch,.cs-journal-launch,.cs-ac-launch{display:none!important}
+   .cs-pulse-launch,.cs-signal-lab-launch,.cs-sources-launch,.cs-live-launch,.cs-catalyst-launch,.cs-discovery-launch,.cs-opportunity-launch,.cs-journal-launch,.cs-ac-launch{display:none!important}
    #cardsignal-top-tools{position:relative;z-index:40;background:rgba(3,14,23,.98);border-bottom:1px solid rgba(78,190,230,.12)}
    .cs-top-tools-inner{max-width:1360px;margin:0 auto;min-height:42px;padding:6px 24px;display:flex;align-items:center;justify-content:flex-end;gap:7px}
    .cs-top-tools-label{margin-right:auto;color:#567786;font-size:8px;font-weight:900;letter-spacing:.15em}
