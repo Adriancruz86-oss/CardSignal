@@ -18,6 +18,7 @@ import HistoryHomeBridge from "./history-home-bridge";
 import SupplyWatchBridgeLayer from "./supply-watch-bridge-layer";
 import ActionCenterLayer from "./action-center-layer";
 import TopToolsNavLayer from "./top-tools-nav-layer";
+import StatCardNavigationLayer from "./stat-card-navigation-layer";
 import "./globals.css";
 import "./asset-overrides.css";
 import "./live-market-click-fix.css";
@@ -61,6 +62,7 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
         <SupplyWatchBridgeLayer />
         <ActionCenterLayer />
         <TopToolsNavLayer />
+        <StatCardNavigationLayer />
       </body>
     </html>
   );
