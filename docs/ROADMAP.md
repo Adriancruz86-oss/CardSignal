@@ -18,10 +18,10 @@ CardSignal's core product goal is to detect conditions that may precede sports-c
 ### P0 — easiest / immediate
 
 - [x] Preserve scan snapshots with velocity so velocity can be compared over time
-- [ ] Velocity Acceleration: compare current sales velocity with prior scans and flag demand acceleration before price fully reacts
-- [ ] Card Market Segmentation: classify cards by era, rookie/prospect indicators, grade/raw status, and scarcity clues from identity text
-- [ ] Catalyst Sensitivity Context: show that rookies, prospect cards, numbered parallels, autos, SSPs, and low-supply cards may react differently from modern base cards without yet modifying the CardSignal Score
-- [ ] Surface market-context and velocity-acceleration evidence in individual Card Detail
+- [x] Velocity Acceleration: compare current sales velocity with prior scans and flag demand acceleration before price fully reacts
+- [x] Card Market Segmentation: classify cards by era, rookie/prospect indicators, grade/raw status, and scarcity clues from identity text
+- [x] Catalyst Sensitivity Context: show that rookies, prospect cards, numbered parallels, autos, SSPs, and low-supply cards may react differently from modern base cards without yet modifying the CardSignal Score
+- [x] Surface market-context and velocity-acceleration evidence in individual Card Detail
 - [ ] Use segmentation in Opportunity Feed / Discovery ranking after enough validation
 
 ### P1 — high-value data integrations
