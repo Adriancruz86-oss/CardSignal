@@ -42,6 +42,7 @@ import BenchmarkPortfolioLayer from "./benchmark-portfolio-layer";
 import BenchmarkHealthLayer from "./benchmark-health-layer";
 import BenchmarkScanReadinessLayer from "./benchmark-scan-readiness-layer";
 import ValidationCohortLayer from "./validation-cohort-layer";
+import PokemonPortfolioLayer from "./pokemon-portfolio-layer";
 import CloudAuthLayer from "./cloud-auth-layer";
 import CloudSyncLayer from "./cloud-sync-layer";
 import "./globals.css";
@@ -102,6 +103,7 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
         <BenchmarkHealthLayer />
         <BenchmarkScanReadinessLayer />
         <ValidationCohortLayer />
+        <PokemonPortfolioLayer />
         <CloudSyncLayer />
         <CloudAuthLayer />
       </body>
