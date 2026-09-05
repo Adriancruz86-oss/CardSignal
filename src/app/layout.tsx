@@ -46,6 +46,7 @@ import PokemonPortfolioLayer from "./pokemon-portfolio-layer";
 import EdgeStackLayer from "./edge-stack-layer";
 import HistoricalAnalogsLayer from "./historical-analogs-layer";
 import PatternPlaybookLayer from "./pattern-playbook-layer";
+import SignalScorecardLayer from "./signal-scorecard-layer";
 import CloudAuthLayer from "./cloud-auth-layer";
 import CloudSyncLayer from "./cloud-sync-layer";
 import "./globals.css";
@@ -110,6 +111,7 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
         <EdgeStackLayer />
         <HistoricalAnalogsLayer />
         <PatternPlaybookLayer />
+        <SignalScorecardLayer />
         <CloudSyncLayer />
         <CloudAuthLayer />
       </body>
