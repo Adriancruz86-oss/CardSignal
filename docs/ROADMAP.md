@@ -10,6 +10,7 @@ CardSignal's core product goal is to detect conditions that may precede sports-c
 - Scan history, alerts, Action Center, Opportunity Feed, Decision Journal
 - Leading Signal Edge Stack that separates early inputs (catalyst, performance, velocity acceleration, supply tightening) from price confirmation and downside risk
 - Historical Analogs matching current catalyst/card setups against prior validated catalyst outcomes using category, league, card role, sensitivity, era, grading status, and liquidity context
+- Pattern Playbooks that aggregate repeating catalyst × league × card-role × sensitivity setups and show sample size, median outcome, positive rate, large-move rate, and observed range
 - News/catalyst tracking and catalyst integration into card detail / Action Center
 - Catalyst Event History preserving first-seen and last-seen timestamps for later outcome validation
 - Catalyst Outcome Lab matching first-seen events to later saved market scans at 24h / 3d / 7d / 30d horizons without interpolation
@@ -33,8 +34,10 @@ CardSignal's core product goal is to detect conditions that may precede sports-c
 - [x] Keep Edge Stack readouts separate from the production CardSignal Score until historical validation supports calibration
 - [x] Add historical analog matching for similar catalyst + velocity + card-segment setups
 - [x] Compare each live catalyst setup with validated prior outcomes and show sample size / median outcome / positive-rate / large-move context
+- [x] Add Pattern Playbooks for catalyst-category × league × role × sensitivity cross-analysis
+- [x] Add explicit sample-quality gates so thin patterns remain visible without being treated as reliable
+- [ ] Surface the most relevant validated playbook directly inside each live Edge Stack card
 - [ ] Extend analog matching to full performance + supply-state snapshots once those histories are dense enough at event time
-- [ ] Add catalyst-category × cohort cross-analysis so call-ups, injuries, trades, milestones, etc. can be evaluated separately by card type
 - [ ] Promote only statistically credible validated factors into the unified Score
 
 ## Internal validation / benchmark roadmap
@@ -116,7 +119,7 @@ CardSignal's core product goal is to detect conditions that may precede sports-c
   - [x] descriptive category outcome layer
   - [x] minimum sample thresholds and confidence labels for cohort comparison
   - [x] league / era / role / sensitivity / grade / liquidity breakdown framework
-  - [ ] catalyst-category × cohort cross-analysis after enough observations exist
+  - [x] catalyst-category × league × role × sensitivity Pattern Playbooks
 - [ ] Calibrate Catalyst Sensitivity weights only after sufficient labeled history
 - [ ] Decide whether validated signals should enter the unified CardSignal Score
 
