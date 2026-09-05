@@ -168,7 +168,9 @@ async function tcdbSuggestions(q: string, key: string) {
 }
 
 export async function GET(request: NextRequest) {
-  const q = new URL(request.url).searchParams.get("q")?.trim() ?? "";
+  const url = new URL(request.url);
+  const q = url.searchParams.get("q")?.trim() ?? "";
+  const sourceMode = url.searchParams.get("source")?.trim().toLowerCase() ?? "";
   if (q.length < 4) return NextResponse.json({ ok: true, query: q, suggestions: [], source: "none" });
 
   const cardSightKey = process.env.CARDSIGHT_API_KEY?.trim() ?? "";
@@ -186,6 +188,10 @@ export async function GET(request: NextRequest) {
 
   if (cardSightRanked.length) {
     return NextResponse.json({ ok: true, query: q, suggestions: cardSightRanked, source: "CardSight" });
+  }
+
+  if (sourceMode === "cardsight") {
+    return NextResponse.json({ ok: true, query: q, suggestions: [], source: "none" });
   }
 
   const fallback = parseKey ? await tcdbSuggestions(q, parseKey) : [];
