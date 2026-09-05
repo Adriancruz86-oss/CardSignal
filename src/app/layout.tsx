@@ -45,6 +45,7 @@ import ValidationCohortLayer from "./validation-cohort-layer";
 import PokemonPortfolioLayer from "./pokemon-portfolio-layer";
 import EdgeStackLayer from "./edge-stack-layer";
 import HistoricalAnalogsLayer from "./historical-analogs-layer";
+import PatternPlaybookLayer from "./pattern-playbook-layer";
 import CloudAuthLayer from "./cloud-auth-layer";
 import CloudSyncLayer from "./cloud-sync-layer";
 import "./globals.css";
@@ -108,6 +109,7 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
         <PokemonPortfolioLayer />
         <EdgeStackLayer />
         <HistoricalAnalogsLayer />
+        <PatternPlaybookLayer />
         <CloudSyncLayer />
         <CloudAuthLayer />
       </body>
