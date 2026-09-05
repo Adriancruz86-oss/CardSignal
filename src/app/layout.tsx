@@ -11,7 +11,7 @@ import SignalLabLayer from "./signal-lab-layer";
 import SignalLabFallbackLayer from "./signal-lab-fallback-layer";
 import PhotoCatalogGuardLayer from "./photo-catalog-guard-layer";
 import PhotoOcrFallbackLayer from "./photo-ocr-fallback-layer";
-import PortfolioPulseLayer from "./portfolio-pulse-layer";
+import PortfolioPulseLayer from "./portfolio-pulse-v2";
 import "./globals.css";
 import "./asset-overrides.css";
 import "./live-market-click-fix.css";
