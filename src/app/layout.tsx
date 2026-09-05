@@ -16,6 +16,7 @@ import DashboardLiveLayer from "./dashboard-live-layer";
 import ScanHistoryAlertsLayer from "./scan-history-alerts-layer";
 import HistoryHomeBridge from "./history-home-bridge";
 import SupplyWatchBridgeLayer from "./supply-watch-bridge-layer";
+import ActionCenterLayer from "./action-center-layer";
 import "./globals.css";
 import "./asset-overrides.css";
 import "./live-market-click-fix.css";
@@ -57,6 +58,7 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
         <ScanHistoryAlertsLayer />
         <HistoryHomeBridge />
         <SupplyWatchBridgeLayer />
+        <ActionCenterLayer />
       </body>
     </html>
   );
