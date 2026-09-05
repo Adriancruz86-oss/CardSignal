@@ -21,25 +21,16 @@ import TopToolsNavLayer from "./top-tools-nav-layer";
 import StatCardNavigationLayer from "./stat-card-navigation-layer";
 import CardSignalScoreLayer from "./card-signal-score-layer";
 import PortfolioWorkbenchLayer from "./portfolio-workbench-layer";
+import CatalystCenterLayer from "./catalyst-center-layer";
 import "./globals.css";
 import "./asset-overrides.css";
 import "./live-market-click-fix.css";
 import "./signal-lab-dropdown-fix.css";
 
-const geistSans = Geist({
-  variable: "--font-geist-sans",
-  subsets: ["latin"],
-});
+const geistSans = Geist({ variable: "--font-geist-sans", subsets: ["latin"] });
+const geistMono = Geist_Mono({ variable: "--font-geist-mono", subsets: ["latin"] });
 
-const geistMono = Geist_Mono({
-  variable: "--font-geist-mono",
-  subsets: ["latin"],
-});
-
-export const metadata: Metadata = {
-  title: "CardSignal",
-  description: "Know before the card market moves.",
-};
+export const metadata: Metadata = { title: "CardSignal", description: "Know before the card market moves." };
 
 export default function RootLayout({ children }: LayoutProps<"/">) {
   return (
@@ -67,6 +58,7 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
         <StatCardNavigationLayer />
         <CardSignalScoreLayer />
         <PortfolioWorkbenchLayer />
+        <CatalystCenterLayer />
       </body>
     </html>
   );
