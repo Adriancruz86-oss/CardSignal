@@ -9,6 +9,7 @@ CardSignal's core product goal is to detect conditions that may precede sports-c
 - 7-day price movement, accepted-sale count, sales velocity, confidence, and unified CardSignal Score
 - Scan history, alerts, Action Center, Opportunity Feed, Decision Journal
 - Leading Signal Edge Stack that separates early inputs (catalyst, performance, velocity acceleration, supply tightening) from price confirmation and downside risk
+- Historical Analogs matching current catalyst/card setups against prior validated catalyst outcomes using category, league, card role, sensitivity, era, grading status, and liquidity context
 - News/catalyst tracking and catalyst integration into card detail / Action Center
 - Catalyst Event History preserving first-seen and last-seen timestamps for later outcome validation
 - Catalyst Outcome Lab matching first-seen events to later saved market scans at 24h / 3d / 7d / 30d horizons without interpolation
@@ -30,8 +31,9 @@ CardSignal's core product goal is to detect conditions that may precede sports-c
 - [x] Separate leading evidence from lagging price confirmation in a portfolio-wide Edge Stack
 - [x] Explain every Edge Stack classification with the underlying catalyst, performance, velocity, supply, price, risk, and missing-data factors
 - [x] Keep Edge Stack readouts separate from the production CardSignal Score until historical validation supports calibration
-- [ ] Add historical analog matching for similar catalyst + performance + velocity + supply + card-segment setups
-- [ ] Compare each live Edge Stack setup with validated prior outcomes and show sample size / median outcome / positive-rate context
+- [x] Add historical analog matching for similar catalyst + velocity + card-segment setups
+- [x] Compare each live catalyst setup with validated prior outcomes and show sample size / median outcome / positive-rate / large-move context
+- [ ] Extend analog matching to full performance + supply-state snapshots once those histories are dense enough at event time
 - [ ] Add catalyst-category × cohort cross-analysis so call-ups, injuries, trades, milestones, etc. can be evaluated separately by card type
 - [ ] Promote only statistically credible validated factors into the unified Score
 
@@ -104,7 +106,7 @@ CardSignal's core product goal is to detect conditions that may precede sports-c
 
 - [x] Catalyst event history with first-seen timestamps
 - [x] Correlate catalysts with later scan outcomes without claiming causation
-- [ ] Historical analog matching: similar catalyst + velocity + segment profiles
+- [x] Historical analog matching: similar catalyst + velocity + segment profiles
 - [~] Measure outcome rates at 24h / 3d / 7d / 30d
   - [x] card-level median change at each horizon when a nearby saved scan exists
   - [x] aggregate matched-count / median / average / positive-rate calculations
