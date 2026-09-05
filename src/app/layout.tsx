@@ -30,6 +30,8 @@ import DiscoveryRadarLayer from "./discovery-radar-layer";
 import MarketScoutLayer from "./market-scout-layer";
 import MarketContextLayer from "./market-context-layer";
 import GradingPopulationLayer from "./grading-population-layer";
+import CloudAuthLayer from "./cloud-auth-layer";
+import CloudSyncLayer from "./cloud-sync-layer";
 import "./globals.css";
 import "./asset-overrides.css";
 import "./live-market-click-fix.css";
@@ -75,6 +77,8 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
         <MarketScoutLayer />
         <MarketContextLayer />
         <GradingPopulationLayer />
+        <CloudSyncLayer />
+        <CloudAuthLayer />
       </body>
     </html>
   );
