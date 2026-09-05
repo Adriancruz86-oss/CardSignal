@@ -22,6 +22,7 @@ import StatCardNavigationLayer from "./stat-card-navigation-layer";
 import CardSignalScoreLayer from "./card-signal-score-layer";
 import PortfolioWorkbenchLayer from "./portfolio-workbench-layer";
 import CatalystCenterLayer from "./catalyst-center-layer";
+import CatalystIntegrationLayer from "./catalyst-integration-layer";
 import "./globals.css";
 import "./asset-overrides.css";
 import "./live-market-click-fix.css";
@@ -59,6 +60,7 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
         <CardSignalScoreLayer />
         <PortfolioWorkbenchLayer />
         <CatalystCenterLayer />
+        <CatalystIntegrationLayer />
       </body>
     </html>
   );
