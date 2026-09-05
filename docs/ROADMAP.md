@@ -33,8 +33,9 @@ CardSignal's core product goal is to detect conditions that may precede sports-c
 - [x] Add benchmark health metrics: cards scanned, exact-comp coverage, stale scans, catalyst coverage, performance coverage, and population coverage
 - [x] Add scan-readiness queue with unscanned / overdue / due / soon / fresh status and league filtering
 - [x] Add validation cohort analysis with minimum-sample labels
-- [ ] Audit every remaining legacy write path for hidden 100/150-card truncation before loading the full benchmark account
-- [ ] Curate the first ~300-card benchmark set across leagues, eras, grades, liquidity, price bands, rookie/veteran roles, and base/parallel/auto/scarcity profiles
+- [x] Audit remaining collection write paths for hidden 100/150-card truncation; remove obsolete 150-card Portfolio Pulse implementation
+- [x] Define machine-readable 300-card benchmark target quotas and curation rules in `data/benchmark/benchmark-300-targets.json`
+- [ ] Curate the first ~300 exact card identities across leagues, eras, grades, liquidity, price bands, rookie/veteran roles, and base/parallel/auto/scarcity profiles
 - [ ] Add scheduled background benchmark scans after Supabase/Vercel deployment
 - [ ] Persist server-run scan jobs and job health after cloud deployment
 
