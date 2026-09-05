@@ -13,6 +13,7 @@ import PhotoCatalogGuardLayer from "./photo-catalog-guard-layer";
 import PhotoOcrFallbackLayer from "./photo-ocr-fallback-layer";
 import PortfolioPulseLayer from "./portfolio-pulse-v2";
 import DashboardLiveLayer from "./dashboard-live-layer";
+import ScanHistoryAlertsLayer from "./scan-history-alerts-layer";
 import "./globals.css";
 import "./asset-overrides.css";
 import "./live-market-click-fix.css";
@@ -51,6 +52,7 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
         <PhotoOcrFallbackLayer />
         <PortfolioPulseLayer />
         <DashboardLiveLayer />
+        <ScanHistoryAlertsLayer />
       </body>
     </html>
   );
