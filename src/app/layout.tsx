@@ -33,7 +33,9 @@ import GradingPopulationLayer from "./grading-population-layer";
 import GradingPopulationAlertsLayer from "./grading-population-alerts-layer";
 import SegmentExplorerLayer from "./segment-explorer-layer";
 import PlayerPerformanceLayer from "./player-performance-layer";
+import PerformanceWatchLayer from "./performance-watch-layer";
 import PortfolioLeagueFilterLayer from "./portfolio-league-filter-layer";
+import CardLeagueEditorLayer from "./card-league-editor-layer";
 import CloudAuthLayer from "./cloud-auth-layer";
 import CloudSyncLayer from "./cloud-sync-layer";
 import "./globals.css";
@@ -82,7 +84,9 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
         <DiscoveryRadarLayer />
         <MarketScoutLayer />
         <MarketContextLayer />
+        <CardLeagueEditorLayer />
         <PlayerPerformanceLayer />
+        <PerformanceWatchLayer />
         <GradingPopulationLayer />
         <GradingPopulationAlertsLayer />
         <SegmentExplorerLayer />
