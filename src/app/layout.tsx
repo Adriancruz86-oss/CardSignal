@@ -24,6 +24,7 @@ import PortfolioWorkbenchLayer from "./portfolio-workbench-layer";
 import CatalystCenterLayer from "./catalyst-center-layer";
 import CatalystIntegrationLayer from "./catalyst-integration-layer";
 import CatalystHistoryLayer from "./catalyst-history-layer";
+import CatalystOutcomeLayer from "./catalyst-outcome-layer";
 import OpportunityFeedLayer from "./opportunity-feed-layer";
 import OpportunityActionsLayer from "./opportunity-actions-layer";
 import DecisionJournalLayer from "./decision-journal-layer";
@@ -80,6 +81,7 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
         <CatalystCenterLayer />
         <CatalystIntegrationLayer />
         <CatalystHistoryLayer />
+        <CatalystOutcomeLayer />
         <OpportunityFeedLayer />
         <OpportunityActionsLayer />
         <DecisionJournalLayer />
