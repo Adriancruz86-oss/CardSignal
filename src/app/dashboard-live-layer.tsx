@@ -28,7 +28,6 @@ export default function DashboardLiveLayer(){
    const needs=owned.filter(c=>!c.marketScan||(c.marketScan.acceptedCount||0)<3);
    const buy=enough.filter(c=>c.marketScan?.pulse==="BUY MORE");
    const sell=enough.filter(c=>c.marketScan?.pulse==="SELL RISK");
-   const watchClose=enough.filter(c=>c.marketScan?.pulse==="WATCH CLOSELY");
    const hold=enough.filter(c=>c.marketScan?.pulse==="HOLD");
    const portfolioValue=owned.reduce((s,c)=>s+(Number(c.marketValue)||0),0);
    const validChanges=enough.map(c=>c.marketScan?.change7d).filter((v):v is number=>typeof v==="number"&&Number.isFinite(v));
@@ -54,7 +53,7 @@ export default function DashboardLiveLayer(){
     ["Signal confidence",topScan?.confidence==="HIGH"?90:topScan?.confidence==="MODERATE"?65:topScan?.confidence==="LOW"?30:0,topScan?.confidence||"No scan"],
    ];
    breakdown.forEach((el,i)=>{const m=metrics[i];if(!m)return;const label=el.querySelector<HTMLElement>(".metric-label span"),val=el.querySelector<HTMLElement>(".metric-label b"),bar=el.querySelector<HTMLElement>(".metric-track i"),small=el.querySelector<HTMLElement>("small");if(label)label.textContent=m[0];if(val)val.textContent=String(Math.round(m[1]));if(bar)bar.style.width=`${m[1]}%`;if(small)small.textContent=m[2];});
-   setText(".breakdown .confidence",topScan?`${topScan.confidence} CONFIDENCE":"NO SCAN");
+   setText(".breakdown .confidence",topScan?`${topScan.confidence} CONFIDENCE`:"NO SCAN");
    setText(".breakdown .insight-box span","MARKET EVIDENCE");
    setText(".breakdown .insight-box p",topScan?`${topScan.acceptedCount} accepted comps underpin this card's current reading. CardSignal does not infer supply or buyer-interest metrics until those data sources are added.`:"Run Portfolio Pulse to replace this panel with real evidence.");
 
