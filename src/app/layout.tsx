@@ -14,6 +14,7 @@ import PhotoOcrFallbackLayer from "./photo-ocr-fallback-layer";
 import PortfolioPulseLayer from "./portfolio-pulse-v2";
 import DashboardLiveLayer from "./dashboard-live-layer";
 import ScanHistoryAlertsLayer from "./scan-history-alerts-layer";
+import HistoryHomeBridge from "./history-home-bridge";
 import "./globals.css";
 import "./asset-overrides.css";
 import "./live-market-click-fix.css";
@@ -53,6 +54,7 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
         <PortfolioPulseLayer />
         <DashboardLiveLayer />
         <ScanHistoryAlertsLayer />
+        <HistoryHomeBridge />
       </body>
     </html>
   );
