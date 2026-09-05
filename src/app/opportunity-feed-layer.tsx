@@ -9,6 +9,7 @@ type Card={id:number;player:string;meta?:string;year?:string;setName?:string;car
 type Article={title:string;url:string;domain:string;publishedAt:string;category:string;tone:"positive"|"negative"|"watch"|"neutral";impact:number};
 type CatalystResult={player:string;fetchedAt:string;articles:Article[]};
 type SupplySnapshot={cardId:number;scannedAt:string;acceptedCount:number;medianAsk:number|null};
+type SupplyState={supply?:"TIGHTENING"|"LOOSENING"|"STABLE"|"BASELINE";inventoryDelta?:number|null};
 type FeedKind="EARLY WATCH"|"CONFIRMED MOMENTUM"|"EXIT PRESSURE"|"BUY SETUP"|"REVIEW"|"NEEDS DATA";
 type FeedItem={card:Card;kind:FeedKind;rank:number;why:string;score:number;catalyst?:Article;supply?:"TIGHTENING"|"LOOSENING"|"STABLE"|"BASELINE";inventoryDelta?:number|null};
 
@@ -20,7 +21,7 @@ function money(v:number|null|undefined){return v==null?"—":`$${v.toLocaleStrin
 function ageHours(iso?:string){if(!iso)return Infinity;const t=new Date(iso).getTime();return Number.isFinite(t)?Math.max(0,Date.now()-t)/3600000:Infinity}
 function deltaPct(now:number,prior:number){return prior?((now-prior)/prior)*100:null}
 function topCatalyst(cache:Record<string,CatalystResult>,player:string){return (cache[player.toLowerCase()]?.articles||[]).filter(a=>Number(a.impact)>=80&&ageHours(a.publishedAt)<=168).sort((a,b)=>b.impact-a.impact)[0]}
-function supplyFor(history:SupplySnapshot[],cardId:number){const rows=history.filter(x=>x.cardId===cardId).sort((a,b)=>new Date(b.scannedAt).getTime()-new Date(a.scannedAt).getTime());if(!rows[0])return{};if(!rows[1])return{supply:"BASELINE" as const,inventoryDelta:null};const d=deltaPct(rows[0].acceptedCount,rows[1].acceptedCount);return{supply:(d!=null&&d<=-15?"TIGHTENING":d!=null&&d>=15?"LOOSENING":"STABLE") as "TIGHTENING"|"LOOSENING"|"STABLE",inventoryDelta:d}}
+function supplyFor(history:SupplySnapshot[],cardId:number):SupplyState{const rows=history.filter(x=>x.cardId===cardId).sort((a,b)=>new Date(b.scannedAt).getTime()-new Date(a.scannedAt).getTime());if(!rows[0])return{};if(!rows[1])return{supply:"BASELINE",inventoryDelta:null};const d=deltaPct(rows[0].acceptedCount,rows[1].acceptedCount);return{supply:d!=null&&d<=-15?"TIGHTENING":d!=null&&d>=15?"LOOSENING":"STABLE",inventoryDelta:d}}
 function kindClass(k:FeedKind){return k==="EXIT PRESSURE"?"sell":k==="EARLY WATCH"?"early":k==="CONFIRMED MOMENTUM"||k==="BUY SETUP"?"buy":k==="NEEDS DATA"?"data":"watch"}
 
 function buildFeed(cards:Card[],cache:Record<string,CatalystResult>,supplyHistory:SupplySnapshot[]):FeedItem[]{
