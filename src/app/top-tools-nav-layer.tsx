@@ -11,6 +11,7 @@ const TOOLS:Tool[]=[
  {label:"Live Market",selector:".cs-live-launch",icon:"◎"},
  {label:"Catalysts",selector:".cs-catalyst-launch",icon:"✦"},
  {label:"Opportunities",selector:".cs-opportunity-launch",icon:"◆"},
+ {label:"Journal",selector:".cs-journal-launch",icon:"▤"},
  {label:"Action Center",selector:".cs-ac-launch",icon:"⚡"},
 ];
 
@@ -66,13 +67,13 @@ export default function TopToolsNavLayer(){
  return createPortal(<>
   <div className="cs-top-tools-inner"><span className="cs-top-tools-label">TOOLS</span>{TOOLS.map(t=><button key={t.label} onClick={()=>openTool(t.selector)}><i>{t.icon}</i>{t.label}</button>)}</div>
   <style jsx global>{`
-   .cs-pulse-launch,.cs-signal-lab-launch,.cs-sources-launch,.cs-live-launch,.cs-catalyst-launch,.cs-opportunity-launch,.cs-ac-launch{display:none!important}
+   .cs-pulse-launch,.cs-signal-lab-launch,.cs-sources-launch,.cs-live-launch,.cs-catalyst-launch,.cs-opportunity-launch,.cs-journal-launch,.cs-ac-launch{display:none!important}
    #cardsignal-top-tools{position:relative;z-index:40;background:rgba(3,14,23,.98);border-bottom:1px solid rgba(78,190,230,.12)}
    .cs-top-tools-inner{max-width:1360px;margin:0 auto;min-height:42px;padding:6px 24px;display:flex;align-items:center;justify-content:flex-end;gap:7px}
    .cs-top-tools-label{margin-right:auto;color:#567786;font-size:8px;font-weight:900;letter-spacing:.15em}
    .cs-top-tools-inner button{height:30px;padding:0 10px;display:flex;align-items:center;gap:6px;border:1px solid rgba(74,188,228,.16);border-radius:7px;background:rgba(7,27,41,.78);color:#8ebccd;font-size:9px;font-weight:800;letter-spacing:.035em;cursor:pointer;white-space:nowrap}
    .cs-top-tools-inner button:hover{border-color:rgba(80,220,255,.34);color:#d9f7ff;background:rgba(10,38,56,.9)}
-   .cs-top-tools-inner button i{font-style:normal;color:#57dcff}.cs-top-tools-inner button:first-of-type i,.cs-top-tools-inner button:nth-last-of-type(2) i,.cs-top-tools-inner button:last-of-type i{color:#59efa1}
+   .cs-top-tools-inner button i{font-style:normal;color:#57dcff}.cs-top-tools-inner button:first-of-type i,.cs-top-tools-inner button:nth-last-of-type(3) i,.cs-top-tools-inner button:last-of-type i{color:#59efa1}.cs-top-tools-inner button:nth-last-of-type(2) i{color:#b7a8ff}
    .cs-nav-flash{animation:csNavFlash .9s ease}@keyframes csNavFlash{0%,100%{box-shadow:0 0 0 rgba(79,218,255,0)}35%{box-shadow:0 0 0 2px rgba(79,218,255,.24),0 0 30px rgba(79,218,255,.12)}}
    @media(max-width:920px){.cs-top-tools-inner{overflow-x:auto;justify-content:flex-start}.cs-top-tools-label{display:none}.cs-top-tools-inner button{flex:0 0 auto}}
   `}</style>
