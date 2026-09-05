@@ -14,11 +14,12 @@ type Clues = {
   playerConfidence?: Confidence;
   yearConfidence?: Confidence;
   cardNumberConfidence?: Confidence;
+  serialConfidence?: Confidence;
   orientationNote?: string;
 };
 
 const EXCLUDES = new Set([
-  "TOPPS","BOWMAN","PANINI","DONRUSS","BASEBALL","FOOTBALL","BASKETBALL","PITCHER","HITTER","ROOKIE","CARD","CARDS","PLAYER","PLAYERS","CHROME","REFRACTOR","PRIZM","OPTIC","SELECT","MOSAIC","COPYRIGHT","INC","LLC","USA","MLB","ANGELS","DODGERS"
+  "TOPPS","BOWMAN","PANINI","DONRUSS","BASEBALL","FOOTBALL","BASKETBALL","PITCHER","HITTER","ROOKIE","CARD","CARDS","PLAYER","PLAYERS","CHROME","REFRACTOR","PRIZM","OPTIC","SELECT","MOSAIC","COPYRIGHT","INC","LLC","USA","MLB","ANGELS","DODGERS","TOPPSBASEBALL","TOPPSBASEB"
 ]);
 
 function cleanLines(text:string){
@@ -27,11 +28,18 @@ function cleanLines(text:string){
 function titleCase(v:string){return v.toLowerCase().replace(/\b[a-z]/g,c=>c.toUpperCase());}
 function normalize(v:string){return v.toUpperCase().replace(/[^A-Z0-9#/' .-]/g," ").replace(/\s+/g," ").trim();}
 function upperRatio(v:string){const letters=v.replace(/[^A-Za-z]/g,"");if(!letters)return 0;return [...letters].filter(c=>c===c.toUpperCase()).length/letters.length;}
+function isPlausibleCardNumber(v:string){
+  const n=v.toUpperCase().replace(/^#/,"").trim();
+  if(!n||n.length>9||/^(19|20)\d{2}$/.test(n)||EXCLUDES.has(n))return false;
+  if(/^[A-Z]{5,}$/.test(n))return false;
+  if(/^\d{1,4}$/.test(n))return true;
+  return /\d/.test(n)&&/^[A-Z0-9-]{2,9}$/.test(n);
+}
 
 function nameCandidates(text:string){
   return cleanLines(text).filter(v=>{
     const words=v.split(" ");
-    if(words.length<2||words.length>4||v.length<6||v.length>32||/\d/.test(v)||upperRatio(v)<.58)return false;
+    if(words.length<2||words.length>4||v.length<6||v.length>32||/\d/.test(v)||upperRatio(v)<.52)return false;
     const n=normalize(v);
     if(EXCLUDES.has(n))return false;
     if([...EXCLUDES].some(x=>x.length>6&&n.includes(x)))return false;
@@ -39,27 +47,29 @@ function nameCandidates(text:string){
   });
 }
 
-function choosePlayer(front:string,frontStrip:string,back:string){
+function choosePlayer(front:string,frontStripA:string,frontStripB:string,back:string){
   const weighted:{value:string;weight:number}[]=[];
   nameCandidates(front).forEach(v=>weighted.push({value:v,weight:2}));
-  nameCandidates(frontStrip).forEach(v=>weighted.push({value:v,weight:6}));
+  nameCandidates(frontStripA).forEach(v=>weighted.push({value:v,weight:8}));
+  nameCandidates(frontStripB).forEach(v=>weighted.push({value:v,weight:10}));
   nameCandidates(back).forEach(v=>weighted.push({value:v,weight:2}));
   const scores=new Map<string,number>();
   for(const item of weighted){const key=normalize(item.value);scores.set(key,(scores.get(key)||0)+item.weight);}
   const ranked=[...scores.entries()].sort((a,b)=>b[1]-a[1]||a[0].length-b[0].length);
   if(!ranked.length)return {value:"",confidence:"low" as Confidence};
   const [value,score]=ranked[0];
-  return {value:titleCase(value),confidence:(score>=8?"high":score>=5?"medium":"low") as Confidence};
+  return {value:titleCase(value),confidence:(score>=10?"high":score>=7?"medium":"low") as Confidence};
 }
 
-function chooseCardNumber(back:string,backTop:string){
-  const all=`${backTop}\n${back}`;
-  const labeled=all.match(/(?:card\s*(?:no\.?|number|#)|no\.?|#)\s*([A-Z0-9-]{1,10})/i)?.[1];
-  if(labeled&&!/^(19|20)\d{2}$/.test(labeled))return {value:labeled.toUpperCase(),confidence:"high" as Confidence};
-  const likely=cleanLines(backTop).flatMap(line=>line.match(/\b(?:US|H|T|BD|BCP|BSP|SMLB|ASG|RD|TT|P)[A-Z0-9-]{0,6}\b/gi)||[]);
-  if(likely.length)return {value:likely[0].toUpperCase(),confidence:"high" as Confidence};
-  const standalone=cleanLines(backTop).map(v=>v.match(/^#?([A-Z0-9-]{1,7})$/i)?.[1]||"").filter(v=>v&&!/^(19|20)\d{2}$/.test(v));
-  if(standalone.length)return {value:standalone[0].toUpperCase(),confidence:"medium" as Confidence};
+function chooseCardNumber(back:string,backTop:string,backRight:string){
+  const all=`${backTop}\n${backRight}\n${back}`.toUpperCase();
+  const exactPrefixes=[...all.matchAll(/\b(?:US|USC|H|T|BD|BCP|BSP|SMLB|ASG|RD|TT|P)[-]?[A-Z]*\d{1,4}\b/g)].map(m=>m[0]);
+  const exact=exactPrefixes.find(isPlausibleCardNumber);
+  if(exact)return {value:exact,confidence:"high" as Confidence};
+  const labeled=[...all.matchAll(/(?:CARD\s*(?:NO\.?|NUMBER|#)|NO\.?|#)\s*([A-Z0-9-]{1,10})/g)].map(m=>m[1]).find(isPlausibleCardNumber);
+  if(labeled)return {value:labeled,confidence:"high" as Confidence};
+  const standalone=cleanLines(`${backTop}\n${backRight}`).map(v=>v.match(/^#?([A-Z0-9-]{1,9})$/i)?.[1]||"").find(isPlausibleCardNumber);
+  if(standalone)return {value:standalone.toUpperCase(),confidence:"medium" as Confidence};
   return {value:"",confidence:"low" as Confidence};
 }
 
@@ -75,7 +85,7 @@ function scoreText(text:string){
   const u=text.toUpperCase();
   let score=Math.min(40,(u.match(/[A-Z]{3,}/g)||[]).length);
   for(const anchor of ["TOPPS","BOWMAN","PANINI","SHOHEI","OHTANI","ROOKIE","BASEBALL","ANGELS","COPYRIGHT","MLB"]){if(u.includes(anchor))score+=12;}
-  if(/\b(?:US|H|T|BD|BCP|BSP|SMLB|ASG|RD|TT|P)[A-Z0-9-]{0,6}\b/.test(u))score+=12;
+  if(/\b(?:US|USC|H|T|BD|BCP|BSP|SMLB|ASG|RD|TT|P)[-]?[A-Z]*\d{1,4}\b/.test(u))score+=12;
   return score;
 }
 
@@ -93,9 +103,9 @@ async function loadCanvas(file:File,rotation:number){
 
 function cropEnhanced(source:HTMLCanvasElement,x:number,y:number,w:number,h:number){
   const sx=Math.round(source.width*x),sy=Math.round(source.height*y),sw=Math.max(1,Math.round(source.width*w)),sh=Math.max(1,Math.round(source.height*h));
-  const scale=Math.max(2,Math.min(4,1800/Math.max(sw,sh)));const c=document.createElement("canvas");c.width=Math.round(sw*scale);c.height=Math.round(sh*scale);
+  const scale=Math.max(2,Math.min(5,2100/Math.max(sw,sh)));const c=document.createElement("canvas");c.width=Math.round(sw*scale);c.height=Math.round(sh*scale);
   const ctx=c.getContext("2d");if(!ctx)throw new Error("Could not crop card image");ctx.drawImage(source,sx,sy,sw,sh,0,0,c.width,c.height);
-  const image=ctx.getImageData(0,0,c.width,c.height),d=image.data;for(let i=0;i<d.length;i+=4){const g=d[i]*.299+d[i+1]*.587+d[i+2]*.114;const b=g>170?255:g<70?0:Math.max(0,Math.min(255,(g-128)*1.8+128));d[i]=d[i+1]=d[i+2]=b;}ctx.putImageData(image,0,0);return c;
+  const image=ctx.getImageData(0,0,c.width,c.height),d=image.data;for(let i=0;i<d.length;i+=4){const g=d[i]*.299+d[i+1]*.587+d[i+2]*.114;const b=g>175?255:g<65?0:Math.max(0,Math.min(255,(g-128)*2+128));d[i]=d[i+1]=d[i+2]=b;}ctx.putImageData(image,0,0);return c;
 }
 
 function setReactInput(el:HTMLInputElement|null,value:string){if(!el||!value)return;const setter=Object.getOwnPropertyDescriptor(HTMLInputElement.prototype,"value")?.set;setter?.call(el,value);el.dispatchEvent(new Event("input",{bubbles:true}));el.dispatchEvent(new Event("change",{bubbles:true}));}
@@ -113,22 +123,26 @@ export default function PhotoOcrFallbackLayer(){
       const rotations=[0,90,180,270];
       const readBest=async(file:File)=>{let best={canvas:await loadCanvas(file,0),text:"",rotation:0,score:-1};for(const rot of rotations){const canvas=rot===0?best.canvas:await loadCanvas(file,rot);const result=await worker!.recognize(canvas);const text=result.data.text||"";const score=scoreText(text);if(score>best.score)best={canvas,text,rotation:rot,score};}return best;};
       const bestFront=await readBest(front);const bestBack=back?await readBest(back):null;
-      setStatus("Reading name strip and card-number areas…");
-      const frontStrip=await worker.recognize(cropEnhanced(bestFront.canvas,.03,.62,.94,.36));
-      const backTop=bestBack?await worker.recognize(cropEnhanced(bestBack.canvas,.03,0,.94,.38)):null;
-      const backBottom=bestBack?await worker.recognize(cropEnhanced(bestBack.canvas,.03,.60,.94,.38)):null;
-      const frontText=bestFront.text,backText=bestBack?.text||"",stripText=frontStrip.data.text||"",topText=backTop?.data.text||"",bottomText=backBottom?.data.text||"";
-      const player=choosePlayer(frontText,stripText,backText);const number=chooseCardNumber(backText,topText);const year=chooseYear(`${backText}\n${bottomText}\n${frontText}`);const combined=`${frontText}\n${backText}\n${stripText}\n${topText}\n${bottomText}`;const brand=combined.match(/\b(Topps|Bowman|Panini|Upper Deck|Donruss|Leaf|Fleer|Score)\b/i)?.[1]||"";const serialMatch=combined.match(/\b(\d{1,4})\s*\/\s*(\d{1,4})\b/);const serial=serialMatch?`${serialMatch[1]}/${serialMatch[2]}`:"";
-      const next:Clues={player:player.value,playerConfidence:player.confidence,year:year.value,yearConfidence:year.confidence,manufacturer:brand?titleCase(brand):"",cardNumber:number.value,cardNumberConfidence:number.confidence,serial,orientationNote:`front ${bestFront.rotation}°${bestBack?` · back ${bestBack.rotation}°`:""}`};setClues(next);
+      setStatus("Reading name strip, card number and serial-number areas…");
+      const frontStripA=await worker.recognize(cropEnhanced(bestFront.canvas,.02,.68,.96,.27));
+      const frontStripB=await worker.recognize(cropEnhanced(bestFront.canvas,.08,.76,.84,.18));
+      const frontSerial=await worker.recognize(cropEnhanced(bestFront.canvas,.58,.00,.40,.28));
+      const backTop=bestBack?await worker.recognize(cropEnhanced(bestBack.canvas,.02,0,.96,.38)):null;
+      const backRight=bestBack?await worker.recognize(cropEnhanced(bestBack.canvas,.62,.00,.36,1.00)):null;
+      const backBottom=bestBack?await worker.recognize(cropEnhanced(bestBack.canvas,.02,.60,.96,.38)):null;
+      const frontText=bestFront.text,backText=bestBack?.text||"",stripAText=frontStripA.data.text||"",stripBText=frontStripB.data.text||"",serialText=frontSerial.data.text||"",topText=backTop?.data.text||"",rightText=backRight?.data.text||"",bottomText=backBottom?.data.text||"";
+      const player=choosePlayer(frontText,stripAText,stripBText,backText);const number=chooseCardNumber(backText,topText,rightText);const year=chooseYear(`${backText}\n${bottomText}\n${frontText}`);const combined=`${frontText}\n${backText}\n${stripAText}\n${stripBText}\n${topText}\n${rightText}\n${bottomText}`;const brand=combined.match(/\b(Topps|Bowman|Panini|Upper Deck|Donruss|Leaf|Fleer|Score)\b/i)?.[1]||"";
+      const serialMatch=serialText.match(/\b(\d{1,4})\s*\/\s*(\d{1,4})\b/);const serial=serialMatch?`${serialMatch[1]}/${serialMatch[2]}`:"";
+      const next:Clues={player:player.value,playerConfidence:player.confidence,year:year.value,yearConfidence:year.confidence,manufacturer:brand?titleCase(brand):"",cardNumber:number.value,cardNumberConfidence:number.confidence,serial,serialConfidence:serial?"medium":"low",orientationNote:`front ${bestFront.rotation}°${bestBack?` · back ${bestBack.rotation}°`:""}`};setClues(next);
       const trustedPlayer=next.playerConfidence!=="low"?next.player:"";const trustedYear=next.yearConfidence!=="low"?next.year:"";const trustedNumber=next.cardNumberConfidence!=="low"?next.cardNumber:"";
       const evidenceCount=[trustedPlayer,trustedYear,next.manufacturer,trustedNumber].filter(Boolean).length;
       const query=evidenceCount>=2&&trustedPlayer?[trustedPlayer,trustedYear,next.manufacturer,trustedNumber?`#${trustedNumber}`:""].filter(Boolean).join(" "):"";
       if(query){setReactInput(document.querySelector<HTMLInputElement>(".cs-add-search"),query);setStatus("Enough evidence found — searching CardSight's catalog for canonical matches…");}
-      else setStatus("OCR found partial clues, but not enough trustworthy evidence to search the catalog automatically. Nothing was written into your card fields.");
+      else setStatus("OCR found partial clues, but not enough trustworthy evidence to search automatically. Suspicious card numbers and serials were discarded.");
     }catch(error){setStatus(error instanceof Error?`OCR failed: ${error.message}`:"OCR failed");}finally{await worker?.terminate();setWorking(false);}
   };
 
   useEffect(()=>{const handler=()=>{void runOcr();};window.addEventListener("cardsignal:request-ocr",handler);return()=>window.removeEventListener("cardsignal:request-ocr",handler);});
   if(!target||!visible)return null;
-  return createPortal(<div className="cs-ocr-fallback"><div className="cs-ocr-fallback-head"><span>PHOTO TEXT VERIFICATION</span><b>OCR supplies clues. The catalog supplies identity.</b></div><button type="button" onClick={runOcr} disabled={working}>{working?"CHECKING ORIENTATION + TEXT…":"READ / VERIFY FRONT + BACK"}</button><small>CardSignal now tries all four orientations before trusting OCR. A card number by itself will never trigger a catalog search.</small>{status&&<div className="cs-ocr-status">{status}</div>}{clues&&<div className="cs-ocr-clues">{clues.player&&<span className={`q-${clues.playerConfidence}`}>PLAYER <b>{clues.player}</b><i>{clues.playerConfidence}</i></span>}{clues.cardNumber&&<span className={`q-${clues.cardNumberConfidence}`}>CARD # <b>{clues.cardNumber}</b><i>{clues.cardNumberConfidence}</i></span>}{clues.year&&<span className={`q-${clues.yearConfidence}`}>YEAR <b>{clues.year}</b><i>{clues.yearConfidence}</i></span>}{clues.manufacturer&&<span>BRAND <b>{clues.manufacturer}</b></span>}{clues.serial&&<span className="q-high">SERIAL <b>{clues.serial}</b><i>high</i></span>}{clues.orientationNote&&<span>ORIENTATION <b>{clues.orientationNote}</b></span>}</div>}<style jsx global>{`.cs-ocr-fallback{margin-top:10px;padding:12px;border:1px solid rgba(255,193,92,.26);border-radius:9px;background:rgba(145,92,18,.08)}.cs-ocr-fallback-head span{display:block;color:#ffc66f;font-size:7px;font-weight:900;letter-spacing:.13em}.cs-ocr-fallback-head b{display:block;margin:4px 0 9px;color:#f5dfba;font-size:10px}.cs-ocr-fallback>button{width:100%;min-height:36px;border:1px solid rgba(255,193,92,.36);border-radius:8px;background:rgba(164,103,24,.12);color:#ffe1aa;font-size:8px;font-weight:900;letter-spacing:.09em;cursor:pointer}.cs-ocr-fallback>button:disabled{opacity:.5;cursor:wait}.cs-ocr-fallback>small{display:block;margin-top:6px;color:#8b9ba3;font-size:8px;line-height:1.4}.cs-ocr-status{margin-top:8px;color:#8fe6ff;font-size:8px}.cs-ocr-clues{display:flex;flex-wrap:wrap;gap:5px;margin-top:9px}.cs-ocr-clues span{padding:5px 7px;border:1px solid rgba(82,205,245,.15);border-radius:6px;background:#071724;color:#66889b;font-size:7px;font-weight:900;letter-spacing:.07em}.cs-ocr-clues b{margin-left:4px;color:#d9f4ff;font-size:8px}.cs-ocr-clues i{margin-left:5px;font-size:6px;font-style:normal;color:#667f8d}.cs-ocr-clues .q-high{border-color:rgba(77,238,157,.3)}.cs-ocr-clues .q-high i{color:#62e9a5}.cs-ocr-clues .q-low{opacity:.55;border-color:rgba(255,107,123,.18)}`}</style></div>,target);
+  return createPortal(<div className="cs-ocr-fallback"><div className="cs-ocr-fallback-head"><span>PHOTO TEXT VERIFICATION</span><b>OCR supplies clues. The catalog supplies identity.</b></div><button type="button" onClick={runOcr} disabled={working}>{working?"CHECKING ORIENTATION + TEXT…":"READ / VERIFY FRONT + BACK"}</button><small>CardSignal checks multiple name-strip crops, validates card-number formats and only trusts serial numbering from the front serial area.</small>{status&&<div className="cs-ocr-status">{status}</div>}{clues&&<div className="cs-ocr-clues">{clues.player&&<span className={`q-${clues.playerConfidence}`}>PLAYER <b>{clues.player}</b><i>{clues.playerConfidence}</i></span>}{clues.cardNumber&&<span className={`q-${clues.cardNumberConfidence}`}>CARD # <b>{clues.cardNumber}</b><i>{clues.cardNumberConfidence}</i></span>}{clues.year&&<span className={`q-${clues.yearConfidence}`}>YEAR <b>{clues.year}</b><i>{clues.yearConfidence}</i></span>}{clues.manufacturer&&<span>BRAND <b>{clues.manufacturer}</b></span>}{clues.serial&&<span className={`q-${clues.serialConfidence}`}>SERIAL <b>{clues.serial}</b><i>{clues.serialConfidence}</i></span>}{clues.orientationNote&&<span>ORIENTATION <b>{clues.orientationNote}</b></span>}</div>}<style jsx global>{`.cs-ocr-fallback{margin-top:10px;padding:12px;border:1px solid rgba(255,193,92,.26);border-radius:9px;background:rgba(145,92,18,.08)}.cs-ocr-fallback-head span{display:block;color:#ffc66f;font-size:7px;font-weight:900;letter-spacing:.13em}.cs-ocr-fallback-head b{display:block;margin:4px 0 9px;color:#f5dfba;font-size:10px}.cs-ocr-fallback>button{width:100%;min-height:36px;border:1px solid rgba(255,193,92,.36);border-radius:8px;background:rgba(164,103,24,.12);color:#ffe1aa;font-size:8px;font-weight:900;letter-spacing:.09em;cursor:pointer}.cs-ocr-fallback>button:disabled{opacity:.5;cursor:wait}.cs-ocr-fallback>small{display:block;margin-top:6px;color:#8b9ba3;font-size:8px;line-height:1.4}.cs-ocr-status{margin-top:8px;color:#8fe6ff;font-size:8px}.cs-ocr-clues{display:flex;flex-wrap:wrap;gap:5px;margin-top:9px}.cs-ocr-clues span{padding:5px 7px;border:1px solid rgba(82,205,245,.15);border-radius:6px;background:#071724;color:#66889b;font-size:7px;font-weight:900;letter-spacing:.07em}.cs-ocr-clues b{margin-left:4px;color:#d9f4ff;font-size:8px}.cs-ocr-clues i{margin-left:5px;font-size:6px;font-style:normal;color:#667f8d}.cs-ocr-clues .q-high{border-color:rgba(77,238,157,.3)}.cs-ocr-clues .q-high i{color:#62e9a5}.cs-ocr-clues .q-low{opacity:.55;border-color:rgba(255,107,123,.18)}`}</style></div>,target);
 }
