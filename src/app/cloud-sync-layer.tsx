@@ -4,7 +4,7 @@ import {useEffect,useState} from "react";
 import {createPortal} from "react-dom";
 import {cloudConfigured,readCloudState,readSession,refreshSession,writeCloudState} from "./cloud-client";
 
-const SYNC_KEYS=["cardsignal-added-cards","cardsignal-scan-history","cardsignal-longitudinal-scan-history","cardsignal-portfolio-history","cardsignal-alerts","cardsignal-catalysts","cardsignal-catalyst-history","cardsignal-supply-history","cardsignal-grading-population-history","cardsignal-player-performance-history","cardsignal-discovery-scouts","cardsignal-discovery-results","cardsignal-discovery-settings","cardsignal-market-scout-results","cardsignal-market-scout-settings","cardsignal-decision-journal","cardsignal-reviewed-actions","cardsignal-pokemon-cards","cardsignal-pokemon-price-history","cardsignal-signal-observations"];
+const SYNC_KEYS=["cardsignal-added-cards","cardsignal-card-organizer","cardsignal-scan-history","cardsignal-longitudinal-scan-history","cardsignal-portfolio-history","cardsignal-alerts","cardsignal-catalysts","cardsignal-catalyst-history","cardsignal-supply-history","cardsignal-grading-population-history","cardsignal-player-performance-history","cardsignal-discovery-scouts","cardsignal-discovery-results","cardsignal-discovery-settings","cardsignal-market-scout-results","cardsignal-market-scout-settings","cardsignal-decision-journal","cardsignal-reviewed-actions","cardsignal-pokemon-cards","cardsignal-pokemon-price-history","cardsignal-signal-observations"];
 const SYNC_META="cardsignal-cloud-sync-meta";
 type Payload={version:number;values:Record<string,string|null>};
 type SyncMeta={userId?:string;lastSync?:string};
