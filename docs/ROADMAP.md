@@ -15,6 +15,8 @@ CardSignal's core product goal is to detect conditions that may precede sports-c
 - Grading Population history model with manual/API-ready snapshots and card-detail trend UI
 - Portfolio-wide grading population alert view
 - Segment Explorer for sport, era, role, grade status, and catalyst-sensitivity concentration
+- League-aware portfolio filtering with explicit per-card league override
+- Player Performance snapshot model, Card Detail context, and portfolio-wide Performance Watch
 
 ## Leading-indicator roadmap
 
@@ -25,15 +27,28 @@ CardSignal's core product goal is to detect conditions that may precede sports-c
 - [x] Card Market Segmentation: classify cards by era, rookie/prospect indicators, grade/raw status, and scarcity clues from identity text
 - [x] Catalyst Sensitivity Context: show that rookies, prospect cards, numbered parallels, autos, SSPs, and low-supply cards may react differently from modern base cards without yet modifying the CardSignal Score
 - [x] Surface market-context and velocity-acceleration evidence in individual Card Detail
+- [x] League filters for MLB / NBA / WNBA / NFL / NHL / soccer / college / other
+- [x] Explicit card-level league assignment so filtering does not depend only on inference
 - [ ] Use segmentation in Opportunity Feed / Discovery ranking after enough validation
 
 ### P1 — high-value data integrations
 
-- [ ] Player Performance Engine for MLB / NBA / NFL
-  - box-score deltas vs season baseline
-  - streaks / season highs / role changes
-  - transactions / call-ups / injuries / starting-status changes
-  - independent performance catalyst separate from headline sentiment
+- [~] Player Performance Engine
+  - [x] reusable performance snapshot schema and signal model
+  - [x] recent-vs-baseline comparison
+  - [x] SURGING / IMPROVING / STEADY / COOLING / SLUMPING states
+  - [x] Card Detail performance context
+  - [x] portfolio-wide Performance Watch with league filters
+  - [x] manual/API source tagging
+  - [ ] connect live MLB box-score / player-stat source
+  - [ ] connect live NBA player-stat source
+  - [ ] connect live WNBA player-stat source
+  - [ ] connect live NFL player-stat source
+  - [ ] add NHL source when reliable
+  - [ ] streaks / season highs / role changes from structured feeds
+  - [ ] transactions / call-ups / injuries / starting-status changes
+  - [ ] performance alerts for meaningful new state changes
+  - [ ] validate performance state against later card-price outcomes before score integration
 - [~] Grading Population Monitor
   - [x] population snapshot/history schema by exact saved card, provider, and grade
   - [x] card-detail population monitor with baseline / growth status
