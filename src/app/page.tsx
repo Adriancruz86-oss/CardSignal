@@ -120,6 +120,11 @@ export default function Home() {
                 <span className="label">MOMENTUM SCORE</span>
                 <div className="score-lockup"><div className="massive-score">86</div><span className="score-arrow">↗</span></div>
                 <div className="recommendation"><span>▲</span> BUY / WATCH <small>HIGH CONFIDENCE</small></div>
+                <div className="decision-strip" aria-label="Signal evidence">
+                  <div><span>PRICE TREND</span><strong className="positive">+11</strong><small>since scan</small></div>
+                  <div><span>SALES VELOCITY</span><strong className="positive">+18</strong><small>accelerating</small></div>
+                  <div><span>SUPPLY</span><strong className="positive">TIGHT</strong><small>inventory falling</small></div>
+                </div>
                 <p>Inventory is tightening while accepted sale prices continue to step upward. Buyer activity is accelerating ahead of the broader price curve.</p>
                 <div className="price-line"><span>EST. MARKET</span><strong>$124.18</strong><small>+$13.84 / 7D</small></div>
                 <button onClick={analyze} className={`analyze-button ${analyzing ? "loading" : ""}`}>
@@ -218,6 +223,11 @@ export default function Home() {
         .v2-signal-primary { padding-right:8px; }
         .score-lockup{display:flex;align-items:center;gap:16px}.score-arrow{font-size:46px;line-height:1;color:#45f39c;text-shadow:0 0 20px rgba(69,243,156,.35)}
         .massive-score{font-size:86px!important}.recommendation small{margin-left:8px;padding-left:9px;border-left:1px solid rgba(82,241,163,.22);color:#93b7a4;font-size:8px;letter-spacing:.08em}
+        .decision-strip{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;margin:12px 0 14px}
+        .decision-strip>div{min-width:0;padding:10px 11px;border:1px solid rgba(87,197,230,.12);border-radius:9px;background:linear-gradient(180deg,rgba(11,34,48,.72),rgba(5,20,30,.72))}
+        .decision-strip span{display:block;color:#68899b;font-size:7px;font-weight:900;letter-spacing:.12em;white-space:nowrap}
+        .decision-strip strong{display:block;margin-top:5px;font-size:14px;letter-spacing:-.02em}
+        .decision-strip small{display:block;margin-top:2px;color:#5f7d8e;font-size:7px}
         .v2-breakdown { min-height:468px!important; padding:26px!important; }
         .triple-grid,.bottom-grid{gap:18px!important}.radar-panel{padding:20px!important;background:linear-gradient(160deg,rgba(7,24,39,.98),rgba(3,14,24,.98))!important}
         .mini-card{position:relative!important;width:38px!important;height:51px!important;overflow:hidden!important;border-radius:6px!important;display:flex!important;align-items:center!important;justify-content:center!important}.mini-card::before{content:"";position:absolute;inset:3px;border:1px solid rgba(255,255,255,.08);border-radius:3px;background:radial-gradient(circle at 50% 35%,rgba(85,215,255,.17),rgba(9,27,39,.2))}.mini-card span{position:relative;z-index:2;font-size:10px!important}.mini-card i{position:absolute;bottom:5px;left:7px;right:7px;height:2px;background:#4bd8ff;box-shadow:0 0 8px #4bd8ff}.mini-buy i{background:#49f19b;box-shadow:0 0 8px #49f19b}.mini-sell i{background:#ff6072;box-shadow:0 0 8px #ff6072}
