@@ -38,6 +38,7 @@ import PlayerPerformanceLayer from "./player-performance-layer";
 import PerformanceWatchLayer from "./performance-watch-layer";
 import PortfolioLeagueFilterLayer from "./portfolio-league-filter-layer";
 import CardLeagueEditorLayer from "./card-league-editor-layer";
+import BenchmarkPortfolioLayer from "./benchmark-portfolio-layer";
 import CloudAuthLayer from "./cloud-auth-layer";
 import CloudSyncLayer from "./cloud-sync-layer";
 import "./globals.css";
@@ -94,6 +95,7 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
         <GradingPopulationLayer />
         <GradingPopulationAlertsLayer />
         <SegmentExplorerLayer />
+        <BenchmarkPortfolioLayer />
         <CloudSyncLayer />
         <CloudAuthLayer />
       </body>
