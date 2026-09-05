@@ -37,5 +37,6 @@ export async function GET(request:NextRequest){
   let pulse:"BUY MORE"|"HOLD"|"WATCH CLOSELY"|"SELL RISK"|"NOT ENOUGH DATA"="NOT ENOUGH DATA";
   if(accepted.length>=3&&change7d!=null){if(change7d<=-8&&recentSales>=2)pulse="SELL RISK";else if(change7d>=8&&recentSales>=3)pulse="BUY MORE";else if(Math.abs(change7d)>=4)pulse="WATCH CLOSELY";else pulse="HOLD";}
   const confidence=accepted.length>=10&&recent.length>=3&&prior.length>=3?"HIGH":accepted.length>=5&&recent.length>=2&&prior.length>=2?"MODERATE":"LOW";
-  return NextResponse.json({ok:sold.ok||card.ok,query:q,elapsedMs:Date.now()-started,acceptedCount:accepted.length,rejectedCount:raw.length-accepted.length,currentMedian,recentMedian,priorMedian,change7d:change7d==null?null:Math.round(change7d*10)/10,recentSales,velocity,pulse,confidence,sources:{soldComps:{ok:sold.ok,error:sold.error??null,rawCount:sold.sales.length},cardApi:{ok:card.ok,error:card.error??null,rawCount:card.sales.length}}});
+  const acceptedSales=[...accepted].sort((a,b)=>(dateMs(b.date)??0)-(dateMs(a.date)??0)).slice(0,12);
+  return NextResponse.json({ok:sold.ok||card.ok,query:q,elapsedMs:Date.now()-started,acceptedCount:accepted.length,rejectedCount:raw.length-accepted.length,currentMedian,recentMedian,priorMedian,change7d:change7d==null?null:Math.round(change7d*10)/10,recentSales,velocity,pulse,confidence,acceptedSales,sources:{soldComps:{ok:sold.ok,error:sold.error??null,rawCount:sold.sales.length},cardApi:{ok:card.ok,error:card.error??null,rawCount:card.sales.length}}});
 }
