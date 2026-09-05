@@ -50,6 +50,7 @@ import PatternPlaybookLayer from "./pattern-playbook-layer";
 import SignalScorecardLayer from "./signal-scorecard-layer";
 import SignalAlertBridgeLayer from "./signal-alert-bridge-layer";
 import CollectionOrganizerLayer from "./collection-organizer-layer";
+import SellPrepLayer from "./sell-prep-layer";
 import CloudAuthLayer from "./cloud-auth-layer";
 import CloudSyncLayer from "./cloud-sync-layer";
 import "./globals.css";
@@ -118,6 +119,7 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
         <SignalScorecardLayer />
         <SignalAlertBridgeLayer />
         <CollectionOrganizerLayer />
+        <SellPrepLayer />
         <CloudSyncLayer />
         <CloudAuthLayer />
       </body>
