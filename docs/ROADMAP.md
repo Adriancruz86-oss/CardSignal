@@ -13,6 +13,8 @@ CardSignal's core product goal is to detect conditions that may precede sports-c
 - Market Scout for broad headline-driven discovery
 - Supply Watch foundation for active eBay listings
 - Grading Population history model with manual/API-ready snapshots and card-detail trend UI
+- Portfolio-wide grading population alert view
+- Segment Explorer for sport, era, role, grade status, and catalyst-sensitivity concentration
 
 ## Leading-indicator roadmap
 
@@ -37,8 +39,8 @@ CardSignal's core product goal is to detect conditions that may precede sports-c
   - [x] card-detail population monitor with baseline / growth status
   - [x] 30D / 90D growth calculations when sufficient snapshots exist
   - [x] explicit manual-vs-API source tagging so no population value is inferred or fabricated
+  - [x] high-grade supply acceleration alerts across the portfolio
   - [ ] connect PSA population source when approved/reliable access exists
-  - [ ] high-grade supply acceleration alerts across the portfolio
   - [ ] stagnant-pop scarcity support in Opportunity ranking after validation
   - [ ] add BGS / SGC / CGC adapters when reliable sources are available
 - [ ] eBay active-supply production integration
@@ -53,10 +55,11 @@ CardSignal's core product goal is to detect conditions that may precede sports-c
 
 ### P2 — broader market context
 
-- [ ] Sport and era segment views: MLB / NBA / NFL; vintage / modern / ultra-modern
-- [ ] Rookie / prospect / veteran / GOAT groupings
-- [ ] Raw / PSA 9 / PSA 10 / other grade comparisons
-- [ ] High-pop / medium-pop / scarce segmentation once grading-pop data exists
+- [x] Sport and era segment views: MLB / NBA / NFL; vintage / modern / ultra-modern
+- [x] Rookie / prospect / veteran grouping view
+- [x] Raw / graded / grader-grade grouping view using available saved identity data
+- [ ] GOAT grouping rules after a reliable player classification source exists
+- [ ] High-pop / medium-pop / scarce segmentation once grading-pop data exists broadly enough
 - [ ] Market regime / index layer using legal and reliable aggregate sources
 - [ ] Major event calendar: playoffs, finals, World Series, Super Bowl, Hall of Fame, major collector shows
 
