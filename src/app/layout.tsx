@@ -19,7 +19,6 @@ import ActionCenterLayer from "./action-center-layer";
 import TopToolsNavLayer from "./top-tools-nav-layer";
 import StatCardNavigationLayer from "./stat-card-navigation-layer";
 import CardSignalScoreLayer from "./card-signal-score-layer";
-import PortfolioWorkbenchLayer from "./portfolio-workbench-layer";
 import CatalystCenterLayer from "./catalyst-center-layer";
 import CatalystIntegrationLayer from "./catalyst-integration-layer";
 import CatalystHistoryLayer from "./catalyst-history-layer";
@@ -35,7 +34,6 @@ import GradingPopulationAlertsLayer from "./grading-population-alerts-layer";
 import SegmentExplorerLayer from "./segment-explorer-layer";
 import PlayerPerformanceLayer from "./player-performance-layer";
 import PerformanceWatchLayer from "./performance-watch-layer";
-import PortfolioLeagueFilterLayer from "./portfolio-league-filter-layer";
 import CardLeagueEditorLayer from "./card-league-editor-layer";
 import BenchmarkPortfolioLayer from "./benchmark-portfolio-layer";
 import BenchmarkHealthLayer from "./benchmark-health-layer";
@@ -71,7 +69,6 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
     <FunctionalLayer />
     <CardDetailLayer />
     <UserCardLayer />
-    <PortfolioLeagueFilterLayer />
     <LiveMarketLayer />
     <ValuationBridge />
     <ValuationOverride />
@@ -88,7 +85,6 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
     <TopToolsNavLayer />
     <StatCardNavigationLayer />
     <CardSignalScoreLayer />
-    <PortfolioWorkbenchLayer />
     <CatalystCenterLayer />
     <CatalystIntegrationLayer />
     <CatalystHistoryLayer />
