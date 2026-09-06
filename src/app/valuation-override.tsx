@@ -27,6 +27,8 @@ function readCards(): StoredCard[] {
 function saveCards(cards: StoredCard[]) {
   localStorage.setItem("cardsignal-added-cards", JSON.stringify(cards));
 }
+function norm(v?:string){return String(v||"").trim().replace(/\s+/g," ").toLowerCase()}
+function resolveExact(cards:StoredCard[],player:string,meta:string){const exact=cards.filter(card=>norm(card.player)===norm(player)&&(!meta||norm(card.meta)===norm(meta)));if(exact.length===1)return exact[0];const same=cards.filter(card=>norm(card.player)===norm(player));return same.length===1?same[0]:null}
 
 export default function ValuationOverride() {
   useEffect(() => {
@@ -82,12 +84,13 @@ export default function ValuationOverride() {
         if (!player || median == null) return;
 
         const cards = readCards();
-        const exactIndex = cards.findIndex((card) => card.player === player && (!meta || card.meta === meta));
-        const index = exactIndex >= 0 ? exactIndex : cards.findIndex((card) => card.player === player);
-        if (index < 0) {
-          window.alert("CardSignal could not find this saved card to update.");
+        const matched=resolveExact(cards,player,meta);
+        if (!matched?.id) {
+          window.alert("CardSignal could not resolve one exact saved card. The value was not applied.");
           return;
         }
+        const index=cards.findIndex(card=>Number(card.id)===Number(matched.id));
+        if(index<0)return;
 
         const savedAt = new Date().toISOString();
         cards[index] = {
@@ -106,19 +109,19 @@ export default function ValuationOverride() {
 
         try {
           const state = JSON.parse(localStorage.getItem("cardsignal-card-detail-state") || "{}");
-          const key = `${player}|${meta}`;
+          const key = `${matched.player||player}|${matched.meta||meta}`;
           state[key] = { ...(state[key] || {}), marketValue: median, lastScan: "live comps · manual override" };
           localStorage.setItem("cardsignal-card-detail-state", JSON.stringify(state));
         } catch {}
 
         window.dispatchEvent(new CustomEvent("cardsignal:user-cards-changed"));
         window.dispatchEvent(new CustomEvent("cardsignal:valuation-applied", {
-          detail: { player, meta, marketValue: median, confidence: confidence || "Loose", compCount: accepted, savedAt },
+          detail: { cardId:matched.id, player:matched.player||player, meta:matched.meta||meta, marketValue: median, confidence: confidence || "Loose", compCount: accepted, savedAt },
         }));
 
         override!.textContent = "VALUE APPLIED";
         override!.disabled = true;
-        note!.textContent = "Applied as a low-confidence valuation. CardSignal will keep the warning attached to this value.";
+        note!.textContent = "Applied to this exact saved card as a low-confidence valuation. CardSignal will keep the warning attached to this value.";
       };
     };
 
