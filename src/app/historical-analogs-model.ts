@@ -9,11 +9,19 @@ export type AnalogHorizon="24H"|"3D"|"7D"|"30D";
 export type AnalogMatch={row:CatalystOutcomeRow;similarity:number;reasons:string[];baselineVelocity:number|null;league:string;era:string;role:string;sensitivity:string;graded:boolean};
 export type AnalogSummary={count:number;median:number|null;average:number|null;positiveRate:number|null;largeMoveRate:number|null;bestCase:number|null;worstCase:number|null;sample:"NO SAMPLE"|"THIN"|"BUILDING"|"USEFUL"};
 
+const CURRENT_CATALYST_HOURS=168;
+const BASELINE_TOLERANCE_HOURS=36;
 function norm(v:unknown){return String(v||"").trim().toLowerCase()}
 function ms(v:string){const n=new Date(v).getTime();return Number.isFinite(n)?n:0}
+function ageHours(v?:string){const t=v?ms(v):0;return t?Math.max(0,Date.now()-t)/3600000:Infinity}
 function median(vals:number[]){if(!vals.length)return null;const s=[...vals].sort((a,b)=>a-b),m=Math.floor(s.length/2);return s.length%2?s[m]:(s[m-1]+s[m])/2}
 function velocityBand(v:number|null|undefined){if(v==null||!Number.isFinite(v))return"UNKNOWN";if(v>=65)return"HIGH";if(v>=30)return"MEDIUM";return"LOW"}
-function nearestBaselineScan(row:CatalystOutcomeRow,scans:ScanSnapshot[]){const target=ms(row.baselineAt);return scans.filter(s=>s.cardId===row.cardId&&s.velocity!=null).sort((a,b)=>Math.abs(ms(a.scannedAt)-target)-Math.abs(ms(b.scannedAt)-target))[0]||null}
+function nearestBaselineScan(row:CatalystOutcomeRow,scans:ScanSnapshot[]){
+ const target=ms(row.baselineAt);if(!target)return null;
+ const nearest=scans.filter(s=>s.cardId===row.cardId&&s.velocity!=null).sort((a,b)=>Math.abs(ms(a.scannedAt)-target)-Math.abs(ms(b.scannedAt)-target))[0]||null;
+ if(!nearest)return null;
+ return Math.abs(ms(nearest.scannedAt)-target)<=BASELINE_TOLERANCE_HOURS*3600000?nearest:null;
+}
 
 export function buildAnalogMatches(current:AnalogCard,catalyst:CurrentCatalyst,outcomes:CatalystOutcomeRow[],cards:AnalogCard[],scans:ScanSnapshot[],horizon:AnalogHorizon="7D"){
  const currentCtx=getCardMarketContext(current as MarketContextCard),currentLeague=getCardLeague(current as LeagueCard),currentVelocity=velocityBand(current.marketScan?.velocity);
@@ -47,7 +55,7 @@ export function summarizeAnalogs(matches:AnalogMatch[],label:AnalogHorizon="7D")
 }
 
 export function currentCatalystFor(player:string,cache:Record<string,{articles?:CurrentCatalyst[]}>){
- return (cache[norm(player)]?.articles||[]).filter(a=>a.impact>=70).sort((a,b)=>b.impact-a.impact)[0]||null;
+ return (cache[norm(player)]?.articles||[]).filter(a=>a.impact>=70&&ageHours(a.publishedAt)<=CURRENT_CATALYST_HOURS).sort((a,b)=>b.impact-a.impact)[0]||null;
 }
 
 export type HistoricalEvent = CatalystEvent;
