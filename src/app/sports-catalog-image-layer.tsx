@@ -14,22 +14,7 @@ async function lookup(q:string){const key=q.trim().toLowerCase();if(!key)return{
 export default function SportsCatalogImageLayer(){
  useEffect(()=>{
   let stopped=false,running=false;
-
-  const enrichNewest=async()=>{
-   if(running||stopped)return;
-   running=true;
-   try{
-    const cards=readCards();
-    const index=cards.findIndex(card=>!card.catalogImage&&queryFor(card).length>=3);
-    if(index<0)return;
-    const card=cards[index],q=queryFor(card),hit=await lookup(q);
-    if(stopped||!hit.imageUrl)return;
-    const next=[...cards];
-    next[index]={...card,catalogImage:hit.imageUrl,catalogImageSource:hit.source,image:hit.imageUrl,frontImage:card.frontImage||card.image||undefined};
-    localStorage.setItem(KEY,JSON.stringify(next));
-    window.dispatchEvent(new Event("cardsignal:catalog-images-changed"));
-   }finally{running=false}
-  };
+  const enrichOne=async()=>{if(running||stopped)return;running=true;try{const cards=readCards();const index=cards.findIndex(c=>!c.catalogImage&&Boolean(c.frontImage));if(index<0)return;const card=cards[index],q=queryFor(card);if(q.length<3)return;const hit=await lookup(q);if(stopped||!hit.imageUrl)return;const next=[...cards];next[index]={...card,catalogImage:hit.imageUrl,catalogImageSource:hit.source,image:hit.imageUrl,frontImage:card.frontImage||card.image||undefined};localStorage.setItem(KEY,JSON.stringify(next));window.dispatchEvent(new Event("cardsignal:catalog-images-changed"));window.dispatchEvent(new Event("cardsignal:user-cards-changed"))}finally{running=false}};
 
   const decorate=()=>{
    document.querySelectorAll<HTMLElement>(".cs-add-suggestions").forEach(list=>{
@@ -41,25 +26,46 @@ export default function SportsCatalogImageLayer(){
       const identityKey=norm(`${title}|${meta}`);
       if(identityKey&&seen.has(identityKey)){btn.style.display="none";btn.dataset.catalogDuplicate="1";return}
       if(identityKey)seen.add(identityKey);
-      if(btn.dataset.catalogImageChecked)return;
-      btn.dataset.catalogImageChecked="1";
       btn.classList.add("cs-sports-candidate");
       const parts=meta.split("·").map(x=>x.trim()).filter(Boolean);
       const variation=parts.length>=4?parts.at(-1)||"":"";
       if(variation&&!btn.querySelector(".cs-sports-variant-pill")){
         const pill=document.createElement("em");pill.className="cs-sports-variant-pill";pill.textContent=variation;btn.appendChild(pill);
       }
+    });
+
+    const visibleButtons=buttons.filter(b=>b.style.display!=="none");
+    const header=list.querySelector<HTMLElement>(":scope > div");
+    if(header&&visibleButtons.length>0)header.textContent=`SELECT THE EXACT CARD · ${visibleButtons.length} UNIQUE MATCH${visibleButtons.length===1?"":"ES"}`;
+
+    // If photo recognition is HIGH confidence and the catalog has exactly one unique match,
+    // confirm it automatically. This avoids an unnecessary image lookup and extra click.
+    const status=document.querySelector<HTMLElement>(".cs-identify-status")?.textContent?.toUpperCase()||"";
+    const highConfidence=status.includes("VISUAL HIGH");
+    if(visibleButtons.length===1&&highConfidence){
+      const only=visibleButtons[0];
+      if(!only.dataset.autoConfirmed){
+        only.dataset.autoConfirmed="1";
+        window.setTimeout(()=>{if(!stopped&&only.isConnected)only.click()},40);
+      }
+      return;
+    }
+
+    // Only fetch catalog thumbnails when the user actually has multiple candidates to compare.
+    if(visibleButtons.length<=1)return;
+    visibleButtons.forEach(btn=>{
+      if(btn.dataset.catalogImageChecked)return;
+      btn.dataset.catalogImageChecked="1";
+      const title=btn.querySelector("b")?.textContent?.trim()||"";
+      const meta=btn.querySelector("span")?.textContent?.trim()||"";
       const q=[title,meta].filter(Boolean).join(" ");if(q.length<3)return;
       void lookup(q).then(hit=>{if(stopped||!hit.imageUrl||!btn.isConnected)return;const img=document.createElement("img");img.src=hit.imageUrl;img.alt=`${title} catalog card`;img.className="cs-sports-catalog-thumb";btn.prepend(img);btn.dataset.catalogImageSource=hit.source})
     });
-    const visible=buttons.filter(b=>b.style.display!=="none").length;
-    const header=list.querySelector<HTMLElement>(":scope > div");
-    if(header&&visible>0)header.textContent=`SELECT THE EXACT CARD · ${visible} UNIQUE MATCH${visible===1?"":"ES"}`;
    });
   };
 
   decorate();
-  const refresh=()=>{void enrichNewest();setTimeout(decorate,50)};
+  const refresh=()=>{setTimeout(decorate,50);void enrichOne()};
   window.addEventListener("cardsignal:user-cards-changed",refresh);
   const obs=new MutationObserver(decorate);obs.observe(document.body,{childList:true,subtree:true});
   return()=>{stopped=true;obs.disconnect();window.removeEventListener("cardsignal:user-cards-changed",refresh)};
