@@ -14,9 +14,22 @@ async function lookup(q:string){const key=q.trim().toLowerCase();if(!key)return{
 export default function SportsCatalogImageLayer(){
  useEffect(()=>{
   let stopped=false,running=false;
-  const enrich=async()=>{if(running||stopped)return;running=true;try{const cards=readCards();let changed=false;const next=[...cards];for(let i=0;i<next.length;i++){const card=next[i];if(card.catalogImage)continue;const q=queryFor(card);if(q.length<3)continue;const hit=await lookup(q);if(stopped)return;if(hit.imageUrl){next[i]={...card,catalogImage:hit.imageUrl,catalogImageSource:hit.source,image:hit.imageUrl,frontImage:card.frontImage||card.image||undefined};changed=true}}
-   if(changed){localStorage.setItem(KEY,JSON.stringify(next));window.dispatchEvent(new Event("cardsignal:catalog-images-changed"));window.dispatchEvent(new Event("cardsignal:user-cards-changed"))}
-  }finally{running=false}};
+
+  const enrichNewest=async()=>{
+   if(running||stopped)return;
+   running=true;
+   try{
+    const cards=readCards();
+    const index=cards.findIndex(card=>!card.catalogImage&&queryFor(card).length>=3);
+    if(index<0)return;
+    const card=cards[index],q=queryFor(card),hit=await lookup(q);
+    if(stopped||!hit.imageUrl)return;
+    const next=[...cards];
+    next[index]={...card,catalogImage:hit.imageUrl,catalogImageSource:hit.source,image:hit.imageUrl,frontImage:card.frontImage||card.image||undefined};
+    localStorage.setItem(KEY,JSON.stringify(next));
+    window.dispatchEvent(new Event("cardsignal:catalog-images-changed"));
+   }finally{running=false}
+  };
 
   const decorate=()=>{
    document.querySelectorAll<HTMLElement>(".cs-add-suggestions").forEach(list=>{
@@ -25,7 +38,6 @@ export default function SportsCatalogImageLayer(){
     buttons.forEach(btn=>{
       const title=btn.querySelector("b")?.textContent?.trim()||"";
       const meta=btn.querySelector("span")?.textContent?.trim()||"";
-      const small=btn.querySelector("small")?.textContent?.trim()||"";
       const identityKey=norm(`${title}|${meta}`);
       if(identityKey&&seen.has(identityKey)){btn.style.display="none";btn.dataset.catalogDuplicate="1";return}
       if(identityKey)seen.add(identityKey);
@@ -46,8 +58,8 @@ export default function SportsCatalogImageLayer(){
    });
   };
 
-  void enrich();decorate();
-  const refresh=()=>{void enrich();setTimeout(decorate,50)};
+  decorate();
+  const refresh=()=>{void enrichNewest();setTimeout(decorate,50)};
   window.addEventListener("cardsignal:user-cards-changed",refresh);
   const obs=new MutationObserver(decorate);obs.observe(document.body,{childList:true,subtree:true});
   return()=>{stopped=true;obs.disconnect();window.removeEventListener("cardsignal:user-cards-changed",refresh)};
