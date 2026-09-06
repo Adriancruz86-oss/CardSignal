@@ -16,6 +16,7 @@ type Sale = {
   marketplace: string;
 };
 type Scan = {
+  matchingVersion?: number;
   scannedAt: string;
   acceptedCount: number;
   rejectedCount: number;
@@ -46,6 +47,8 @@ type Card = {
   setName?: string;
   cardNumber?: string;
   variant?: string;
+  gradingCompany?: string;
+  grade?: string;
   mode?: "owned" | "watching";
   score?: number;
   marketValue?: number;
@@ -55,6 +58,7 @@ type Card = {
   canonicalIdentity?: Identity;
   marketScan?: Scan;
   supplySnapshot?: SupplyEvidence;
+  valuationStatus?: "NO_MATCH" | "UNREVIEWED" | "APPROVED";
 };
 type Snapshot = {
   id: string;
@@ -92,6 +96,7 @@ type ScanResponse = {
   pulse?: Pulse;
   confidence?: string;
   acceptedSales?: Sale[];
+  matchingVersion?: number;
 };
 
 const CARD_KEY = "cardsignal-added-cards",
@@ -137,7 +142,9 @@ function resolvedIdentity(card: Card) {
   const parts = String(card.meta || "")
     .split("·")
     .map((part) => part.trim());
-  const metaYear = parts.find((part) => /^(?:19|20)\d{2}(?:-\d{2})?$/.test(part));
+  const metaYear = parts.find((part) =>
+    /^(?:19|20)\d{2}(?:-\d{2})?$/.test(part),
+  );
   const metaNumber = parts.find((part) => /^#[a-z0-9-]+$/i.test(part));
   const metaSet = parts.find(
     (part) =>
@@ -145,12 +152,19 @@ function resolvedIdentity(card: Card) {
       part !== metaNumber &&
       !/^(raw|psa|bgs|sgc|cgc)\b/i.test(part),
   );
+  const metaGrade = String(card.meta || "").match(
+    /\b(PSA|BGS|SGC|CGC)\s*([0-9.]+)/i,
+  );
+  const isRaw = parts.some((part) => /^raw$/i.test(part));
   return {
     playerName: canonical.playerName || card.player,
     year: canonical.year || card.year || metaYear || "",
     setName: canonical.setName || card.setName || metaSet || "",
-    cardNumber: canonical.cardNumber || card.cardNumber || metaNumber?.slice(1) || "",
+    cardNumber:
+      canonical.cardNumber || card.cardNumber || metaNumber?.slice(1) || "",
     variation: canonical.variation || card.variant || "",
+    grader: card.gradingCompany || (isRaw ? "Raw" : metaGrade?.[1] || ""),
+    grade: card.grade || metaGrade?.[2] || "",
   };
 }
 function tone(p?: Pulse) {
@@ -241,6 +255,7 @@ function HistoryChart({ points }: { points: Snapshot[] }) {
 export default function CardDetailLayer() {
   const [card, setCard] = useState<Card | null>(null),
     [scanning, setScanning] = useState(false),
+    [advancedOpen, setAdvancedOpen] = useState(false),
     [error, setError] = useState("");
   useEffect(() => {
     const click = (e: MouseEvent) => {
@@ -251,6 +266,7 @@ export default function CardDetailLayer() {
       const c = findCard(row);
       if (c) {
         setCard(c);
+        setAdvancedOpen(false);
         setError("");
       }
     };
@@ -265,6 +281,7 @@ export default function CardDetailLayer() {
         c = cards().find((x) => x.id === id);
       if (c) {
         setCard(c);
+        setAdvancedOpen(false);
         setError("");
       }
     };
@@ -286,6 +303,13 @@ export default function CardDetailLayer() {
       window.removeEventListener("cardsignal:user-cards-changed", refresh);
     };
   }, [card?.id]);
+  useEffect(() => {
+    document.body.classList.toggle(
+      "cs-detail-advanced",
+      Boolean(card && advancedOpen),
+    );
+    return () => document.body.classList.remove("cs-detail-advanced");
+  }, [card, advancedOpen]);
   const history = useMemo(
     () =>
       card
@@ -324,12 +348,15 @@ export default function CardDetailLayer() {
         set: id.setName || card.setName || "",
         cardNumber: id.cardNumber || card.cardNumber || "",
         variant: id.variation || card.variant || "",
+        grader: id.grader || "",
+        grade: id.grade || "",
       });
     try {
       const r = await fetch(`/api/portfolio-scan?${p}`, { cache: "no-store" }),
         j = (await r.json()) as ScanResponse;
       if (!r.ok || !j.ok) throw new Error(j.error || "Card scan failed");
       const scan: Scan = {
+        matchingVersion: Number(j.matchingVersion || 0),
         scannedAt: new Date().toISOString(),
         acceptedCount: Number(j.acceptedCount || 0),
         rejectedCount: Number(j.rejectedCount || 0),
@@ -349,7 +376,11 @@ export default function CardDetailLayer() {
         const updated = {
           ...c,
           marketScan: scan,
-          marketValue: scan.currentMedian ?? 0,
+          marketValue: c.marketValue || 0,
+          valuationStatus:
+            scan.currentMedian == null
+              ? ("NO_MATCH" as const)
+              : ("UNREVIEWED" as const),
         };
         return { ...updated, score: getCardSignalScore(updated).score };
       });
@@ -361,6 +392,25 @@ export default function CardDetailLayer() {
     } finally {
       setScanning(false);
     }
+  };
+  const approveValuation = () => {
+    if (
+      !card?.marketScan?.currentMedian ||
+      card.marketScan.matchingVersion !== 3
+    )
+      return;
+    const next = cards().map((c) =>
+      c.id === card.id
+        ? {
+            ...c,
+            marketValue: card.marketScan!.currentMedian!,
+            valuationStatus: "APPROVED" as const,
+          }
+        : c,
+    );
+    localStorage.setItem(CARD_KEY, JSON.stringify(next));
+    window.dispatchEvent(new Event("cardsignal:user-cards-changed"));
+    setCard(next.find((c) => c.id === card.id) || card);
   };
   if (!card) return null;
   const s = card.marketScan,
@@ -482,6 +532,13 @@ export default function CardDetailLayer() {
           <button onClick={rescan} disabled={scanning}>
             {scanning ? "SCANNING…" : "RESCAN CARD"}
           </button>
+          {s?.matchingVersion === 3 &&
+            s.currentMedian != null &&
+            card.valuationStatus !== "APPROVED" && (
+              <button className="approve" onClick={approveValuation}>
+                APPLY VALUE
+              </button>
+            )}
         </div>
         {error && <div className="cs-md-error">{error}</div>}
         <div className="cs-md-columns">
@@ -527,6 +584,8 @@ export default function CardDetailLayer() {
           setName={id.setName || card.setName}
           cardNumber={id.cardNumber || card.cardNumber}
           variant={id.variation || card.variant}
+          grader={id.grader}
+          grade={id.grade}
           soldMedian={s?.currentMedian ?? null}
           identityConfirmed={card.catalogConfirmed}
         />
@@ -563,6 +622,12 @@ export default function CardDetailLayer() {
             </div>
           )}
         </article>
+        <button
+          className="cs-md-advanced-toggle"
+          onClick={() => setAdvancedOpen((value) => !value)}
+        >
+          {advancedOpen ? "HIDE ADVANCED RESEARCH" : "SHOW ADVANCED RESEARCH"}
+        </button>
         <footer>
           Charts and evidence use only saved scans and accepted identity-matched
           market rows.
@@ -749,7 +814,7 @@ export default function CardDetailLayer() {
         }
         .cs-md-evidence {
           display: grid;
-          grid-template-columns: 1fr 1fr 1.3fr auto;
+          grid-template-columns: 1fr 1fr 1.3fr auto auto;
           gap: 8px;
           margin-bottom: 13px;
         }
@@ -766,6 +831,30 @@ export default function CardDetailLayer() {
           color: #9affc5;
           font-size: 7px;
           font-weight: 900;
+        }
+        .cs-md-evidence button.approve {
+          border-color: rgba(85, 218, 255, 0.35);
+          background: rgba(44, 173, 216, 0.08);
+          color: #8ee8ff;
+        }
+        .cs-md-advanced-toggle {
+          width: 100%;
+          margin-top: 10px;
+          padding: 12px;
+          border: 1px solid rgba(101, 145, 180, 0.18);
+          border-radius: 8px;
+          background: rgba(8, 23, 35, 0.7);
+          color: #8ca8b7;
+          font-size: 8px;
+          font-weight: 900;
+          letter-spacing: 0.08em;
+        }
+        body:not(.cs-detail-advanced) .cs-detail-catalysts,
+        body:not(.cs-detail-advanced) .cs-mctx,
+        body:not(.cs-detail-advanced) .cs-gp-panel,
+        body:not(.cs-detail-advanced) .cs-league-editor,
+        body:not(.cs-detail-advanced) .cs-perf-panel {
+          display: none !important;
         }
         .cs-md-error {
           margin-bottom: 10px;

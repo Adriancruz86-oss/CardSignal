@@ -35,12 +35,14 @@ type Props = {
   setName?: string;
   cardNumber?: string;
   variant?: string;
+  grader?: string;
+  grade?: string;
   soldMedian?: number | null;
   identityConfirmed?: boolean;
 };
 const HISTORY_KEY = "cardsignal-supply-history",
   CARD_KEY = "cardsignal-added-cards",
-  MATCHING_VERSION = 2;
+  MATCHING_VERSION = 3;
 function readHistory(): Snapshot[] {
   try {
     const v = JSON.parse(localStorage.getItem(HISTORY_KEY) || "[]");
@@ -70,6 +72,8 @@ export default function SupplyWatchPanel({
   setName,
   cardNumber,
   variant,
+  grader,
+  grade,
   soldMedian,
   identityConfirmed,
 }: Props) {
@@ -102,7 +106,10 @@ export default function SupplyWatchPanel({
       ? ((current.medianAsk - soldMedian) / soldMedian) * 100
       : null;
   const identityConfidence: "HIGH" | "MEDIUM" | "LOW" =
-    identityConfirmed && !!setName && !!cardNumber
+    identityConfirmed &&
+    !!setName &&
+    !!cardNumber &&
+    (grader === "Raw" || !!(grader && grade))
       ? "HIGH"
       : !!setName && !!cardNumber
         ? "MEDIUM"
@@ -132,6 +139,8 @@ export default function SupplyWatchPanel({
       set: setName || "",
       cardNumber: cardNumber || "",
       variant: variant || "",
+      grader: grader || "",
+      grade: grade || "",
     });
     try {
       const r = await fetch(`/api/supply-watch?${p}`, { cache: "no-store" }),
@@ -295,8 +304,9 @@ export default function SupplyWatchPanel({
           </div>
           {identityConfidence === "LOW" && (
             <div className="cs-sw-warning">
-              Identity is too broad for a directional supply signal. Confirm set
-              and card number; these listings remain reference data only.
+              Identity is too broad for a directional supply signal. Confirm
+              set, card number, and raw/graded condition; these listings remain
+              reference data only.
             </div>
           )}
           {current.listings.length > 0 && (

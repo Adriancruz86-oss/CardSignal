@@ -59,62 +59,80 @@ import "./ui-polish-pass.css";
 import "./portfolio-click-fix.css";
 
 const geistSans = Geist({ variable: "--font-geist-sans", subsets: ["latin"] });
-const geistMono = Geist_Mono({ variable: "--font-geist-mono", subsets: ["latin"] });
-export const metadata: Metadata = { title: "CardSignal", description: "Know before the card market moves." };
+const geistMono = Geist_Mono({
+  variable: "--font-geist-mono",
+  subsets: ["latin"],
+});
+export const metadata: Metadata = {
+  title: "CardSignal",
+  description: "Know before the card market moves.",
+};
 
 export default function RootLayout({ children }: LayoutProps<"/">) {
-  return <html lang="en" className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}><body className="min-h-full flex flex-col">
-    {children}
-    <FunctionalLayer />
-    <CardDetailLayer />
-    <SafePortfolioLayer />
-    <LiveMarketLayer />
-    <ValuationBridge />
-    <ValuationOverride />
-    <DataSourcesLayer />
-    <SignalLabLayer />
-    <SignalLabFallbackLayer />
-    <PortfolioPulseLayer />
-    <DashboardLiveLayer />
-    <ScanHistoryAlertsLayer />
-    <LongitudinalScanHistoryLayer />
-    <HistoryHomeBridge />
-    <ActionCenterLayer />
-    <TopToolsNavLayer />
-    <StatCardNavigationLayer />
-    <CardSignalScoreLayer />
-    <CatalystCenterLayer />
-    <CatalystIntegrationLayer />
-    <CatalystHistoryLayer />
-    <CatalystOutcomeLayer />
-    <OpportunityFeedLayer />
-    <OpportunityActionsLayer />
-    <DecisionJournalLayer />
-    <DiscoveryRadarLayer />
-    <MarketScoutLayer />
-    <MarketContextLayer />
-    <CardLeagueEditorLayer />
-    <PlayerPerformanceLayer />
-    <PerformanceWatchLayer />
-    <GradingPopulationLayer />
-    <GradingPopulationAlertsLayer />
-    <SegmentExplorerLayer />
-    <BenchmarkPortfolioLayer />
-    <BenchmarkHealthLayer />
-    <BenchmarkScanReadinessLayer />
-    <ValidationCohortLayer />
-    <PokemonPortfolioLayer />
-    <PokemonPhotoCaptureLayer />
-    <SportsCatalogImageLayer />
-    <EdgeStackLayer />
-    <HistoricalAnalogsLayer />
-    <PatternPlaybookLayer />
-    <SignalScorecardLayer />
-    <SignalAlertBridgeLayer />
-    <DecisionBriefLayer />
-    <CollectionOrganizerLayer />
-    <SellPrepLayer />
-    <CloudSyncLayer />
-    <CloudAuthLayer />
-  </body></html>;
+  const cloudPending = Boolean(
+    process.env.NEXT_PUBLIC_SUPABASE_URL &&
+    (process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ||
+      process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY),
+  );
+  return (
+    <html
+      lang="en"
+      className={`${geistSans.variable} ${geistMono.variable} h-full antialiased${cloudPending ? " cloud-pending" : ""}`}
+    >
+      <body className="min-h-full flex flex-col">
+        {children}
+        <FunctionalLayer />
+        <CardDetailLayer />
+        <SafePortfolioLayer />
+        <LiveMarketLayer />
+        <ValuationBridge />
+        <ValuationOverride />
+        <DataSourcesLayer />
+        <SignalLabLayer />
+        <SignalLabFallbackLayer />
+        <PortfolioPulseLayer />
+        <DashboardLiveLayer />
+        <ScanHistoryAlertsLayer />
+        <LongitudinalScanHistoryLayer />
+        <HistoryHomeBridge />
+        <ActionCenterLayer />
+        <TopToolsNavLayer />
+        <StatCardNavigationLayer />
+        <CardSignalScoreLayer />
+        <CatalystCenterLayer />
+        <CatalystIntegrationLayer />
+        <CatalystHistoryLayer />
+        <CatalystOutcomeLayer />
+        <OpportunityFeedLayer />
+        <OpportunityActionsLayer />
+        <DecisionJournalLayer />
+        <DiscoveryRadarLayer />
+        <MarketScoutLayer />
+        <MarketContextLayer />
+        <CardLeagueEditorLayer />
+        <PlayerPerformanceLayer />
+        <PerformanceWatchLayer />
+        <GradingPopulationLayer />
+        <GradingPopulationAlertsLayer />
+        <SegmentExplorerLayer />
+        <BenchmarkPortfolioLayer />
+        <BenchmarkHealthLayer />
+        <BenchmarkScanReadinessLayer />
+        <ValidationCohortLayer />
+        <PokemonPortfolioLayer />
+        <PokemonPhotoCaptureLayer />
+        <SportsCatalogImageLayer />
+        <EdgeStackLayer />
+        <HistoricalAnalogsLayer />
+        <PatternPlaybookLayer />
+        <SignalScorecardLayer />
+        <SignalAlertBridgeLayer />
+        <DecisionBriefLayer />
+        <CollectionOrganizerLayer />
+        <SellPrepLayer />
+        <CloudSyncLayer />
+        <CloudAuthLayer />
+      </body>
+    </html>
+  );
 }

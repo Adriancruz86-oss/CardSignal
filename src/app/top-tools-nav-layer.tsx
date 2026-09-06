@@ -5,17 +5,17 @@ import { createPortal } from "react-dom";
 
 type Tool={label:string;selector:string;icon:string};
 const CORE:Tool[]=[
- {label:"Decision Brief",selector:".cs-decision-brief-launch",icon:"◆"},
  {label:"Portfolio Pulse",selector:".cs-pulse-launch",icon:"◉"},
- {label:"Edge Stack",selector:".cs-edge-stack-launch",icon:"⌁"},
  {label:"Live Market",selector:".cs-live-launch",icon:"◎"},
- {label:"Collection",selector:".cs-organizer-launch",icon:"▦"},
- {label:"Sell Prep",selector:".cs-sell-prep-launch",icon:"↗"},
- {label:"Discovery",selector:".cs-discovery-launch",icon:"⌖"},
  {label:"Action Center",selector:".cs-ac-launch",icon:"⚡"},
- {label:"Pokémon",selector:".cs-pokemon-launch",icon:"◓"},
 ];
 const LAB:Tool[]=[
+ {label:"Decision Brief",selector:".cs-decision-brief-launch",icon:"◆"},
+ {label:"Edge Stack",selector:".cs-edge-stack-launch",icon:"⌁"},
+ {label:"Collection Organizer",selector:".cs-organizer-launch",icon:"▦"},
+ {label:"Sell Prep",selector:".cs-sell-prep-launch",icon:"↗"},
+ {label:"Discovery",selector:".cs-discovery-launch",icon:"⌖"},
+ {label:"Pokémon",selector:".cs-pokemon-launch",icon:"◓"},
  {label:"Historical Analogs",selector:".cs-analogs-launch",icon:"≋"},
  {label:"Pattern Playbooks",selector:".cs-playbook-launch",icon:"▧"},
  {label:"Signal Scorecard",selector:".cs-scorecard-launch",icon:"✓"},

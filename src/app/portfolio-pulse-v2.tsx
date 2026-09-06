@@ -15,6 +15,7 @@ type Identity = {
 type PulseStatus =
   "BUY MORE" | "HOLD" | "WATCH CLOSELY" | "SELL RISK" | "NOT ENOUGH DATA";
 type MarketScan = {
+  matchingVersion?: number;
   scannedAt: string;
   acceptedCount: number;
   rejectedCount: number;
@@ -36,6 +37,8 @@ type StoredCard = {
   setName?: string;
   cardNumber?: string;
   variant?: string;
+  gradingCompany?: string;
+  grade?: string;
   mode?: "owned" | "watching";
   score?: number;
   move?: string;
@@ -70,6 +73,7 @@ type ScanResponse = {
   velocity?: number | null;
   pulse?: PulseStatus;
   confidence?: string;
+  matchingVersion?: number;
 };
 
 const STORAGE_KEY = "cardsignal-added-cards";
@@ -116,12 +120,21 @@ function statusClass(s: PulseStatus) {
 }
 function scanParams(card: StoredCard) {
   const id = card.canonicalIdentity || {};
+  const gradeMatch = String(card.meta || "").match(
+    /\b(PSA|BGS|SGC|CGC)\s*([0-9.]+)/i,
+  );
+  const grader =
+    card.gradingCompany ||
+    (/\bRaw\b/i.test(card.meta || "") ? "Raw" : gradeMatch?.[1] || "");
+  const grade = card.grade || gradeMatch?.[2] || "";
   return new URLSearchParams({
     player: id.playerName || card.player,
     year: id.year || card.year || "",
     set: id.setName || card.setName || "",
     cardNumber: id.cardNumber || card.cardNumber || "",
     variant: id.variation || card.variant || "",
+    grader,
+    grade,
   });
 }
 
@@ -129,6 +142,7 @@ export default function PortfolioPulseV2() {
   const [open, setOpen] = useState(false),
     [cards, setCards] = useState<StoredCard[]>([]),
     [scanning, setScanning] = useState(false),
+    [visibleCount, setVisibleCount] = useState(15),
     [progress, setProgress] = useState("");
   const cancelRef = useRef(false);
   const refresh = () => setCards(readCards());
@@ -166,6 +180,7 @@ export default function PortfolioPulseV2() {
       const j = (await r.json()) as ScanResponse;
       if (!r.ok || !j.ok) return null;
       const scan: MarketScan = {
+        matchingVersion: Number(j.matchingVersion || 0),
         scannedAt: new Date().toISOString(),
         acceptedCount: Number(j.acceptedCount || 0),
         rejectedCount: Number(j.rejectedCount || 0),
@@ -220,7 +235,9 @@ export default function PortfolioPulseV2() {
             const updated = {
               ...c,
               marketScan: scan,
-              marketValue: scan.currentMedian ?? 0,
+              marketValue: c.marketValue || 0,
+              valuationStatus:
+                scan.currentMedian == null ? "NO_MATCH" : "UNREVIEWED",
             };
             const pulse = effectivePulse(
               scan.pulse,
@@ -281,7 +298,13 @@ export default function PortfolioPulseV2() {
   });
   return (
     <>
-      <button className="cs-pulse-launch" onClick={() => setOpen(true)}>
+      <button
+        className="cs-pulse-launch"
+        onClick={() => {
+          setVisibleCount(15);
+          setOpen(true);
+        }}
+      >
         ◉ PORTFOLIO PULSE
       </button>
       {open && (
@@ -352,7 +375,7 @@ export default function PortfolioPulseV2() {
               {sorted.length === 0 ? (
                 <div className="cs-pulse-empty">No owned cards yet.</div>
               ) : (
-                sorted.slice(0, MAX_CARDS).map((card) => (
+                sorted.slice(0, visibleCount).map((card) => (
                   <article key={card.id}>
                     <div>
                       <strong>{card.player}</strong>
@@ -390,6 +413,18 @@ export default function PortfolioPulseV2() {
                 ))
               )}
             </div>
+            {sorted.length > visibleCount && (
+              <button
+                className="cs-pulse-more"
+                onClick={() =>
+                  setVisibleCount((count) =>
+                    Math.min(count + 15, sorted.length),
+                  )
+                }
+              >
+                SHOW 15 MORE · {sorted.length - visibleCount} REMAINING
+              </button>
+            )}
             <div className="cs-pulse-note">
               No signal is issued with fewer than three accepted exact comps.
               Cancelling never rolls back completed batches.
@@ -572,6 +607,17 @@ export default function PortfolioPulseV2() {
           margin-top: 10px;
           color: #5f7d8a;
           font-size: 7px;
+        }
+        .cs-pulse-more {
+          width: 100%;
+          margin-top: 9px;
+          padding: 11px;
+          border: 1px solid rgba(83, 210, 255, 0.14);
+          border-radius: 8px;
+          background: rgba(8, 27, 40, 0.66);
+          color: #89c9dd;
+          font-size: 8px;
+          font-weight: 900;
         }
         @media (max-width: 760px) {
           .cs-pulse-stats {

@@ -3,7 +3,7 @@
 import { useEffect } from "react";
 
 type PulseStatus = "BUY MORE" | "HOLD" | "WATCH CLOSELY" | "SELL RISK" | "NOT ENOUGH DATA";
-type MarketScan = { scannedAt:string; acceptedCount:number; rejectedCount:number; currentMedian:number|null; recentMedian:number|null; priorMedian:number|null; change7d:number|null; recentSales:number; velocity:number|null; pulse:PulseStatus; confidence:string; elapsedMs:number };
+type MarketScan = { matchingVersion?:number; scannedAt:string; acceptedCount:number; rejectedCount:number; currentMedian:number|null; recentMedian:number|null; priorMedian:number|null; change7d:number|null; recentSales:number; velocity:number|null; pulse:PulseStatus; confidence:string; elapsedMs:number };
 type CanonicalIdentity = { cardId?:string; playerName?:string; year?:string; setName?:string; cardNumber?:string; variation?:string };
 type Card = { id:number; player:string; meta?:string; year?:string; setName?:string; cardNumber?:string; variant?:string; mode?:"owned"|"watching"; marketValue?:number; score?:number; move?:string; tone?:"buy"|"hold"|"sell"; image?:string; demo?:boolean; catalogConfirmed?:boolean; catalogSource?:string; catalogCardId?:string; canonicalIdentity?:CanonicalIdentity; marketScan?:MarketScan; liveValuation?:{compCount?:number;median?:number;confidence?:string;savedAt?:string} };
 
@@ -31,7 +31,7 @@ export default function DashboardLiveLayer(){
    const scanned=owned.filter(c=>c.marketScan);
    const enough=scanned.filter(c=>(c.marketScan?.acceptedCount||0)>=3);
    const needs=owned.filter(c=>!c.marketScan||(c.marketScan.acceptedCount||0)<3);
-   const priced=owned.filter(c=>(Number(c.marketValue)||0)>0);
+   const priced=owned.filter(c=>(Number(c.marketValue)||0)>0&&(!c.marketScan||Number(c.marketScan.matchingVersion||0)>=3));
    const buy=enough.filter(c=>c.marketScan?.pulse==="BUY MORE");
    const sell=enough.filter(c=>c.marketScan?.pulse==="SELL RISK");
    const hold=enough.filter(c=>c.marketScan?.pulse==="HOLD");

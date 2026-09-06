@@ -1,24 +1,436 @@
 "use client";
 
-import {useEffect,useState} from "react";
-import {createPortal} from "react-dom";
-import {cloudConfigured,ensureProfile,refreshSession,signIn,signOut,signUp,type CloudSession} from "./cloud-client";
+import { useEffect, useState } from "react";
+import { createPortal } from "react-dom";
+import {
+  cloudConfigured,
+  ensureProfile,
+  refreshSession,
+  signIn,
+  signOut,
+  signUp,
+  type CloudSession,
+} from "./cloud-client";
 
-const PROFILE_KEY="cardsignal-cloud-profile";
-export default function CloudAuthLayer(){
- const[mounted,setMounted]=useState(false),[ready,setReady]=useState(false),[session,setSession]=useState<CloudSession|null>(null),[profile,setProfile]=useState<{username?:string;email?:string}|null>(null),[mode,setMode]=useState<"signin"|"signup">("signin"),[email,setEmail]=useState(""),[password,setPassword]=useState(""),[confirmPassword,setConfirmPassword]=useState(""),[username,setUsername]=useState(""),[busy,setBusy]=useState(false),[error,setError]=useState("");
- const configured=cloudConfigured();
- const signupMismatch=mode==="signup"&&confirmPassword.length>0&&password!==confirmPassword;
- const passwordTooShort=mode==="signup"&&password.length>0&&password.length<8;
- useEffect(()=>{setMounted(true)},[]);
- useEffect(()=>{let live=true;(async()=>{if(!configured){setReady(true);return}try{const s=await refreshSession();if(!live)return;setSession(s);if(s){const p=await ensureProfile(s.access_token,s.user);if(!live)return;setProfile(p);localStorage.setItem(PROFILE_KEY,JSON.stringify(p));window.dispatchEvent(new Event("cardsignal:cloud-auth-changed"));}}catch{localStorage.removeItem("cardsignal-cloud-session")}finally{if(live)setReady(true)}})();return()=>{live=false}},[configured]);
- const submit=async()=>{if(busy)return;setBusy(true);setError("");try{if(mode==="signup"){if(username.trim().length<2)throw new Error("Choose a username with at least 2 characters.");if(password.length<8)throw new Error("Use a password with at least 8 characters.");if(password!==confirmPassword)throw new Error("Passwords do not match. Re-enter both before creating the account.");const j=await signUp(email.trim(),password,username.trim());if(!j.access_token){setError("Account created. If email confirmation is enabled in Supabase, confirm the email before signing in.");setMode("signin");setPassword("");setConfirmPassword("");return}const s=j as CloudSession;setSession(s);const p=await ensureProfile(s.access_token,s.user,username.trim());setProfile(p);localStorage.setItem(PROFILE_KEY,JSON.stringify(p));}else{const s=await signIn(email.trim(),password);setSession(s);const p=await ensureProfile(s.access_token,s.user);setProfile(p);localStorage.setItem(PROFILE_KEY,JSON.stringify(p));}window.dispatchEvent(new Event("cardsignal:cloud-auth-changed"));}catch(e){setError(e instanceof Error?e.message:"Login failed")}finally{setBusy(false)}};
- const logout=async()=>{await signOut();setSession(null);setProfile(null);localStorage.removeItem(PROFILE_KEY);window.dispatchEvent(new Event("cardsignal:cloud-auth-changed"))};
- const switchMode=()=>{setMode(mode==="signin"?"signup":"signin");setError("");setPassword("");setConfirmPassword("")};
- if(!mounted||!ready||!configured)return null;
- return createPortal(<>
-  {!session&&<div className="cs-auth-backdrop"><section className="cs-auth-card"><div className="cs-auth-brand"><span>CARD<span>SIGNAL</span></span><small>PERSONAL MARKET INTELLIGENCE</small></div><h1>{mode==="signin"?"Welcome back":"Create your collector account"}</h1><p>{mode==="signin"?"Sign in to load your own collection, watchlist, scans, alerts, and decision history.":"Each account gets a separate private CardSignal collection. Your username is what CardSignal displays; email is used securely for sign-in."}</p>{mode==="signup"&&<label><span>USERNAME</span><input value={username} onChange={e=>setUsername(e.target.value)} autoComplete="username" placeholder="e.g. MikeCards"/></label>}<label><span>EMAIL</span><input type="email" value={email} onChange={e=>setEmail(e.target.value)} autoComplete="email" placeholder="you@example.com"/></label><label><span>PASSWORD</span><input type="password" value={password} onChange={e=>setPassword(e.target.value)} onKeyDown={e=>e.key==="Enter"&&mode==="signin"&&submit()} autoComplete={mode==="signup"?"new-password":"current-password"} placeholder={mode==="signup"?"8+ characters":"Password"}/></label>{mode==="signup"&&<><label><span>CONFIRM PASSWORD</span><input type="password" value={confirmPassword} onChange={e=>setConfirmPassword(e.target.value)} onKeyDown={e=>e.key==="Enter"&&submit()} autoComplete="new-password" placeholder="Re-enter password"/></label>{passwordTooShort&&<div className="cs-auth-inline-warn">Use at least 8 characters.</div>}{signupMismatch&&<div className="cs-auth-inline-warn">Passwords do not match.</div>}</>}{error&&<div className="cs-auth-error">{error}</div>}<button className="cs-auth-primary" onClick={submit} disabled={busy||!email||(mode==="signin"?password.length<6:username.trim().length<2||password.length<8||confirmPassword.length<8||password!==confirmPassword)}>{busy?"WORKING…":mode==="signin"?"SIGN IN":"CREATE ACCOUNT"}</button><button className="cs-auth-switch" onClick={switchMode}>{mode==="signin"?"Need an account? Create one":"Already have an account? Sign in"}</button><div className="cs-auth-note">Cloud accounts keep collections separate by authenticated user ID. Never share a password between collectors.</div></section></div>}
-  {session&&<div className="cs-account-chip"><span>●</span><div><b>{profile?.username||session.user.email?.split("@")[0]||"Collector"}</b><small>CLOUD ACCOUNT</small></div><button onClick={logout}>SIGN OUT</button></div>}
-  <style jsx global>{`.cs-auth-backdrop{position:fixed;inset:0;z-index:3000;display:grid;place-items:center;padding:20px;background:radial-gradient(circle at 50% 20%,rgba(16,68,95,.38),transparent 40%),#020b12}.cs-auth-card{width:min(430px,94vw);padding:30px;border:1px solid rgba(86,207,244,.2);border-radius:18px;background:linear-gradient(155deg,#091d2c,#04111c);box-shadow:0 40px 120px rgba(0,0,0,.72);color:#eaf8ff}.cs-auth-brand>span{font-size:23px;font-weight:950;letter-spacing:-.04em}.cs-auth-brand>span span{color:#61eba5}.cs-auth-brand small{display:block;margin-top:3px;color:#5c8294;font-size:7px;font-weight:900;letter-spacing:.16em}.cs-auth-card h1{margin:24px 0 7px;font-size:25px}.cs-auth-card>p{margin:0 0 18px;color:#7896a5;font-size:10px;line-height:1.55}.cs-auth-card label{display:block;margin-top:10px}.cs-auth-card label span{display:block;margin-bottom:5px;color:#6c8d9c;font-size:7px;font-weight:900;letter-spacing:.09em}.cs-auth-card input{width:100%;height:43px;padding:0 12px;border:1px solid rgba(79,190,229,.15);border-radius:8px;background:#051520;color:#e7f8ff;outline:none}.cs-auth-card input:focus{border-color:rgba(83,218,255,.42)}.cs-auth-primary{width:100%;height:43px;margin-top:15px;border:1px solid rgba(82,236,157,.3);border-radius:8px;background:rgba(46,196,122,.12);color:#98ffc2;font-size:9px;font-weight:950;letter-spacing:.08em;cursor:pointer}.cs-auth-primary:disabled{opacity:.45}.cs-auth-switch{width:100%;margin-top:10px;border:0;background:transparent;color:#80dff8;font-size:9px;cursor:pointer}.cs-auth-error,.cs-auth-inline-warn{margin-top:11px;padding:9px;border:1px solid rgba(255,102,122,.25);border-radius:7px;background:rgba(160,30,48,.1);color:#ff9cab;font-size:8px;line-height:1.45}.cs-auth-inline-warn{margin-top:7px;padding:7px 9px}.cs-auth-note{margin-top:15px;padding-top:12px;border-top:1px solid rgba(80,188,225,.08);color:#587a8a;font-size:7px;line-height:1.45}.cs-account-chip{position:fixed;right:18px;bottom:18px;z-index:1200;display:flex;align-items:center;gap:8px;padding:7px 8px 7px 10px;border:1px solid rgba(83,232,157,.2);border-radius:9px;background:rgba(4,18,28,.94);box-shadow:0 12px 30px rgba(0,0,0,.35);color:#dff8ea}.cs-account-chip>span{color:#59eba0;font-size:9px}.cs-account-chip b,.cs-account-chip small{display:block}.cs-account-chip b{font-size:9px}.cs-account-chip small{margin-top:1px;color:#648697;font-size:6px;font-weight:900}.cs-account-chip button{height:25px;padding:0 7px;border:1px solid rgba(80,183,221,.12);border-radius:6px;background:#071724;color:#7699aa;font-size:6px;font-weight:900;cursor:pointer}`}</style>
- </>,document.body)
+const PROFILE_KEY = "cardsignal-cloud-profile";
+export default function CloudAuthLayer() {
+  const [mounted, setMounted] = useState(false),
+    [ready, setReady] = useState(false),
+    [session, setSession] = useState<CloudSession | null>(null),
+    [profile, setProfile] = useState<{
+      username?: string;
+      email?: string;
+    } | null>(null),
+    [mode, setMode] = useState<"signin" | "signup">("signin"),
+    [email, setEmail] = useState(""),
+    [password, setPassword] = useState(""),
+    [confirmPassword, setConfirmPassword] = useState(""),
+    [username, setUsername] = useState(""),
+    [busy, setBusy] = useState(false),
+    [error, setError] = useState("");
+  const configured = cloudConfigured();
+  const signupMismatch =
+    mode === "signup" &&
+    confirmPassword.length > 0 &&
+    password !== confirmPassword;
+  const passwordTooShort =
+    mode === "signup" && password.length > 0 && password.length < 8;
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+  useEffect(() => {
+    if (ready || !configured)
+      document.documentElement.classList.remove("cloud-pending");
+  }, [ready, configured]);
+  useEffect(() => {
+    let live = true;
+    (async () => {
+      if (!configured) {
+        setReady(true);
+        return;
+      }
+      try {
+        const s = await refreshSession();
+        if (!live) return;
+        setSession(s);
+        if (s) {
+          const p = await ensureProfile(s.access_token, s.user);
+          if (!live) return;
+          setProfile(p);
+          localStorage.setItem(PROFILE_KEY, JSON.stringify(p));
+          window.dispatchEvent(new Event("cardsignal:cloud-auth-changed"));
+        }
+      } catch {
+        localStorage.removeItem("cardsignal-cloud-session");
+      } finally {
+        if (live) setReady(true);
+      }
+    })();
+    return () => {
+      live = false;
+    };
+  }, [configured]);
+  const submit = async () => {
+    if (busy) return;
+    setBusy(true);
+    setError("");
+    try {
+      if (mode === "signup") {
+        if (username.trim().length < 2)
+          throw new Error("Choose a username with at least 2 characters.");
+        if (password.length < 8)
+          throw new Error("Use a password with at least 8 characters.");
+        if (password !== confirmPassword)
+          throw new Error(
+            "Passwords do not match. Re-enter both before creating the account.",
+          );
+        const j = await signUp(email.trim(), password, username.trim());
+        if (!j.access_token) {
+          setError(
+            "Account created. If email confirmation is enabled in Supabase, confirm the email before signing in.",
+          );
+          setMode("signin");
+          setPassword("");
+          setConfirmPassword("");
+          return;
+        }
+        const s = j as CloudSession;
+        setSession(s);
+        const p = await ensureProfile(s.access_token, s.user, username.trim());
+        setProfile(p);
+        localStorage.setItem(PROFILE_KEY, JSON.stringify(p));
+      } else {
+        const s = await signIn(email.trim(), password);
+        setSession(s);
+        const p = await ensureProfile(s.access_token, s.user);
+        setProfile(p);
+        localStorage.setItem(PROFILE_KEY, JSON.stringify(p));
+      }
+      window.dispatchEvent(new Event("cardsignal:cloud-auth-changed"));
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Login failed");
+    } finally {
+      setBusy(false);
+    }
+  };
+  const logout = async () => {
+    await signOut();
+    setSession(null);
+    setProfile(null);
+    localStorage.removeItem(PROFILE_KEY);
+    window.dispatchEvent(new Event("cardsignal:cloud-auth-changed"));
+  };
+  const switchMode = () => {
+    setMode(mode === "signin" ? "signup" : "signin");
+    setError("");
+    setPassword("");
+    setConfirmPassword("");
+  };
+  if (!mounted || !ready || !configured) return null;
+  return createPortal(
+    <>
+      {!session && (
+        <div className="cs-auth-backdrop">
+          <section className="cs-auth-card">
+            <div className="cs-auth-brand">
+              <span>
+                CARD<span>SIGNAL</span>
+              </span>
+              <small>PERSONAL MARKET INTELLIGENCE</small>
+            </div>
+            <h1>
+              {mode === "signin"
+                ? "Welcome back"
+                : "Create your collector account"}
+            </h1>
+            <p>
+              {mode === "signin"
+                ? "Sign in to load your own collection, watchlist, scans, alerts, and decision history."
+                : "Each account gets a separate private CardSignal collection. Your username is what CardSignal displays; email is used securely for sign-in."}
+            </p>
+            {mode === "signup" && (
+              <label>
+                <span>USERNAME</span>
+                <input
+                  value={username}
+                  onChange={(e) => setUsername(e.target.value)}
+                  autoComplete="username"
+                  placeholder="e.g. MikeCards"
+                />
+              </label>
+            )}
+            <label>
+              <span>EMAIL</span>
+              <input
+                type="email"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                autoComplete="email"
+                placeholder="you@example.com"
+              />
+            </label>
+            <label>
+              <span>PASSWORD</span>
+              <input
+                type="password"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                onKeyDown={(e) =>
+                  e.key === "Enter" && mode === "signin" && submit()
+                }
+                autoComplete={
+                  mode === "signup" ? "new-password" : "current-password"
+                }
+                placeholder={mode === "signup" ? "8+ characters" : "Password"}
+              />
+            </label>
+            {mode === "signup" && (
+              <>
+                <label>
+                  <span>CONFIRM PASSWORD</span>
+                  <input
+                    type="password"
+                    value={confirmPassword}
+                    onChange={(e) => setConfirmPassword(e.target.value)}
+                    onKeyDown={(e) => e.key === "Enter" && submit()}
+                    autoComplete="new-password"
+                    placeholder="Re-enter password"
+                  />
+                </label>
+                {passwordTooShort && (
+                  <div className="cs-auth-inline-warn">
+                    Use at least 8 characters.
+                  </div>
+                )}
+                {signupMismatch && (
+                  <div className="cs-auth-inline-warn">
+                    Passwords do not match.
+                  </div>
+                )}
+              </>
+            )}
+            {error && <div className="cs-auth-error">{error}</div>}
+            <button
+              className="cs-auth-primary"
+              onClick={submit}
+              disabled={
+                busy ||
+                !email ||
+                (mode === "signin"
+                  ? password.length < 6
+                  : username.trim().length < 2 ||
+                    password.length < 8 ||
+                    confirmPassword.length < 8 ||
+                    password !== confirmPassword)
+              }
+            >
+              {busy
+                ? "WORKING…"
+                : mode === "signin"
+                  ? "SIGN IN"
+                  : "CREATE ACCOUNT"}
+            </button>
+            <button className="cs-auth-switch" onClick={switchMode}>
+              {mode === "signin"
+                ? "Need an account? Create one"
+                : "Already have an account? Sign in"}
+            </button>
+            <div className="cs-auth-note">
+              Cloud accounts keep collections separate by authenticated user ID.
+              Never share a password between collectors.
+            </div>
+          </section>
+        </div>
+      )}
+      {session && (
+        <div className="cs-account-chip">
+          <span>●</span>
+          <div>
+            <b>
+              {profile?.username ||
+                session.user.email?.split("@")[0] ||
+                "Collector"}
+            </b>
+            <small>CLOUD ACCOUNT</small>
+          </div>
+          <button onClick={logout}>SIGN OUT</button>
+        </div>
+      )}
+      <style jsx global>{`
+        html.cloud-pending {
+          background: #020b12;
+        }
+        html.cloud-pending body {
+          visibility: hidden;
+        }
+        .cs-auth-backdrop {
+          position: fixed;
+          inset: 0;
+          z-index: 3000;
+          display: grid;
+          place-items: center;
+          padding: 20px;
+          background:
+            radial-gradient(
+              circle at 50% 20%,
+              rgba(16, 68, 95, 0.38),
+              transparent 40%
+            ),
+            #020b12;
+        }
+        .cs-auth-card {
+          width: min(430px, 94vw);
+          padding: 30px;
+          border: 1px solid rgba(86, 207, 244, 0.2);
+          border-radius: 18px;
+          background: linear-gradient(155deg, #091d2c, #04111c);
+          box-shadow: 0 40px 120px rgba(0, 0, 0, 0.72);
+          color: #eaf8ff;
+        }
+        .cs-auth-brand > span {
+          font-size: 23px;
+          font-weight: 950;
+          letter-spacing: -0.04em;
+        }
+        .cs-auth-brand > span span {
+          color: #61eba5;
+        }
+        .cs-auth-brand small {
+          display: block;
+          margin-top: 3px;
+          color: #5c8294;
+          font-size: 7px;
+          font-weight: 900;
+          letter-spacing: 0.16em;
+        }
+        .cs-auth-card h1 {
+          margin: 24px 0 7px;
+          font-size: 25px;
+        }
+        .cs-auth-card > p {
+          margin: 0 0 18px;
+          color: #7896a5;
+          font-size: 10px;
+          line-height: 1.55;
+        }
+        .cs-auth-card label {
+          display: block;
+          margin-top: 10px;
+        }
+        .cs-auth-card label span {
+          display: block;
+          margin-bottom: 5px;
+          color: #6c8d9c;
+          font-size: 7px;
+          font-weight: 900;
+          letter-spacing: 0.09em;
+        }
+        .cs-auth-card input {
+          width: 100%;
+          height: 43px;
+          padding: 0 12px;
+          border: 1px solid rgba(79, 190, 229, 0.15);
+          border-radius: 8px;
+          background: #051520;
+          color: #e7f8ff;
+          outline: none;
+        }
+        .cs-auth-card input:focus {
+          border-color: rgba(83, 218, 255, 0.42);
+        }
+        .cs-auth-primary {
+          width: 100%;
+          height: 43px;
+          margin-top: 15px;
+          border: 1px solid rgba(82, 236, 157, 0.3);
+          border-radius: 8px;
+          background: rgba(46, 196, 122, 0.12);
+          color: #98ffc2;
+          font-size: 9px;
+          font-weight: 950;
+          letter-spacing: 0.08em;
+          cursor: pointer;
+        }
+        .cs-auth-primary:disabled {
+          opacity: 0.45;
+        }
+        .cs-auth-switch {
+          width: 100%;
+          margin-top: 10px;
+          border: 0;
+          background: transparent;
+          color: #80dff8;
+          font-size: 9px;
+          cursor: pointer;
+        }
+        .cs-auth-error,
+        .cs-auth-inline-warn {
+          margin-top: 11px;
+          padding: 9px;
+          border: 1px solid rgba(255, 102, 122, 0.25);
+          border-radius: 7px;
+          background: rgba(160, 30, 48, 0.1);
+          color: #ff9cab;
+          font-size: 8px;
+          line-height: 1.45;
+        }
+        .cs-auth-inline-warn {
+          margin-top: 7px;
+          padding: 7px 9px;
+        }
+        .cs-auth-note {
+          margin-top: 15px;
+          padding-top: 12px;
+          border-top: 1px solid rgba(80, 188, 225, 0.08);
+          color: #587a8a;
+          font-size: 7px;
+          line-height: 1.45;
+        }
+        .cs-account-chip {
+          position: fixed;
+          right: 18px;
+          bottom: 18px;
+          z-index: 1200;
+          display: flex;
+          align-items: center;
+          gap: 8px;
+          padding: 7px 8px 7px 10px;
+          border: 1px solid rgba(83, 232, 157, 0.2);
+          border-radius: 9px;
+          background: rgba(4, 18, 28, 0.94);
+          box-shadow: 0 12px 30px rgba(0, 0, 0, 0.35);
+          color: #dff8ea;
+        }
+        .cs-account-chip > span {
+          color: #59eba0;
+          font-size: 9px;
+        }
+        .cs-account-chip b,
+        .cs-account-chip small {
+          display: block;
+        }
+        .cs-account-chip b {
+          font-size: 9px;
+        }
+        .cs-account-chip small {
+          margin-top: 1px;
+          color: #648697;
+          font-size: 6px;
+          font-weight: 900;
+        }
+        .cs-account-chip button {
+          height: 25px;
+          padding: 0 7px;
+          border: 1px solid rgba(80, 183, 221, 0.12);
+          border-radius: 6px;
+          background: #071724;
+          color: #7699aa;
+          font-size: 6px;
+          font-weight: 900;
+          cursor: pointer;
+        }
+      `}</style>
+    </>,
+    document.body,
+  );
 }
