@@ -42,7 +42,7 @@ import BenchmarkHealthLayer from "./benchmark-health-layer";
 import BenchmarkScanReadinessLayer from "./benchmark-scan-readiness-layer";
 import ValidationCohortLayer from "./validation-cohort-layer";
 import PokemonPortfolioLayer from "./pokemon-portfolio-layer";
-import PokemonPhotoCaptureLayer from "./pokemon-photo-capture-layer";
+import PokemonPhotoCaptureLayer from "./pokemon-photo-capture-v2";
 import EdgeStackLayer from "./edge-stack-layer";
 import HistoricalAnalogsLayer from "./historical-analogs-layer";
 import PatternPlaybookLayer from "./pattern-playbook-layer";
