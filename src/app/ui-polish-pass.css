@@ -102,7 +102,7 @@ button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-vis
 .section-title button:hover{background:rgba(76,199,236,.06)!important;color:#d9f8ff!important}
 .signal-row{margin-inline:-4px!important;padding:10px 7px!important;border-radius:5px!important;border-bottom-color:rgba(92,185,219,.065)!important;transition:background .14s ease}
 .signal-row:hover{background:rgba(67,191,229,.045)!important;transform:none!important}
-.mini-card{box-shadow:none!important;background:transparent!important;border:1px solid rgba(112,202,235,.14)!important;border-radius:4px!important;overflow:hidden!important}
+.mini-card{position:relative!important;box-shadow:none!important;background:transparent!important;border:1px solid rgba(112,202,235,.14)!important;border-radius:4px!important;overflow:hidden!important}
 .mini-card:not(:has(img)){display:none!important}
 .mini-card img{width:100%!important;height:100%!important;object-fit:cover!important;display:block!important}
 .mini-card span,.mini-card i{display:none!important}
