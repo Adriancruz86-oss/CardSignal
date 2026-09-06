@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import FunctionalLayer from "./functional-layer";
 import CardDetailLayer from "./card-detail-layer";
-import UserCardLayer from "./user-card-layer";
+import SafePortfolioLayer from "./safe-portfolio-layer";
 import LiveMarketLayer from "./live-market-layer";
 import ValuationBridge from "./valuation-bridge";
 import ValuationOverride from "./valuation-override";
@@ -68,7 +68,7 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
     {children}
     <FunctionalLayer />
     <CardDetailLayer />
-    <UserCardLayer />
+    <SafePortfolioLayer />
     <LiveMarketLayer />
     <ValuationBridge />
     <ValuationOverride />
