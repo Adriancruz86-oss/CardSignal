@@ -134,6 +134,13 @@ export default function SafePortfolioLayer() {
     saveRaw(readRaw().filter((x) => num(x.id) !== id));
     refresh();
   };
+  const launchAddCard = () => {
+    setOpen(false);
+    setTimeout(
+      () => document.querySelector<HTMLButtonElement>(".add-card")?.click(),
+      60,
+    );
+  };
   const openCard = (id: number) => {
     setOpen(false);
     window.setTimeout(
@@ -167,19 +174,7 @@ export default function SafePortfolioLayer() {
             <h2>Collection</h2>
             <p>Owned cards and cards you are watching.</p>
           </div>
-          <button
-            className="add"
-            onClick={() => {
-              setOpen(false);
-              setTimeout(
-                () =>
-                  document
-                    .querySelector<HTMLButtonElement>(".add-card")
-                    ?.click(),
-                60,
-              );
-            }}
-          >
+          <button className="add" onClick={launchAddCard}>
             ＋ ADD CARD
           </button>
         </header>
@@ -226,7 +221,28 @@ export default function SafePortfolioLayer() {
         />
         <div className="list">
           {shown.length === 0 ? (
-            <div className="empty">No cards match this view.</div>
+            <div className="empty">
+              {q ? (
+                <>
+                  <strong>No matching cards</strong>
+                  <span>Try a player, set, year, or card number.</span>
+                  <button onClick={() => setQ("")}>CLEAR SEARCH</button>
+                </>
+              ) : (
+                <>
+                  <strong>
+                    {tab === "owned"
+                      ? "Add your first owned card"
+                      : "Your watchlist is empty"}
+                  </strong>
+                  <span>
+                    Add the exact year, set, card number, and condition. Then
+                    open the card and scan its market evidence.
+                  </span>
+                  <button onClick={launchAddCard}>＋ ADD A CARD</button>
+                </>
+              )}
+            </div>
           ) : (
             shown.map((c) => (
               <article
@@ -412,9 +428,33 @@ export default function SafePortfolioLayer() {
           gap: 8px;
         }
         .cs-safe-portfolio .empty {
+          display: grid;
+          justify-items: center;
+          gap: 8px;
           padding: 35px;
           text-align: center;
           color: #708d9a;
+        }
+        .cs-safe-portfolio .empty strong {
+          color: #d7eaf2;
+          font-size: 15px;
+        }
+        .cs-safe-portfolio .empty span {
+          max-width: 460px;
+          font-size: 10px;
+          line-height: 1.55;
+        }
+        .cs-safe-portfolio .empty button {
+          min-height: 34px;
+          margin-top: 4px;
+          padding: 0 13px;
+          border: 1px solid rgba(72, 241, 157, 0.3);
+          border-radius: 7px;
+          background: rgba(39, 202, 124, 0.08);
+          color: #9affc5;
+          font-size: 8px;
+          font-weight: 900;
+          cursor: pointer;
         }
         .cs-safe-portfolio .cs-portfolio-card {
           display: grid;
