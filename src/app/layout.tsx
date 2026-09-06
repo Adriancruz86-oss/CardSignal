@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
+import CollectionCapacityGuardLayer from "./collection-capacity-guard-layer";
 import FunctionalLayer from "./functional-layer";
 import CardDetailLayer from "./card-detail-layer";
 import UserCardLayer from "./user-card-layer";
@@ -70,6 +71,7 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
     <html lang="en" className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}>
       <body className="min-h-full flex flex-col">
         {children}
+        <CollectionCapacityGuardLayer />
         <FunctionalLayer />
         <CardDetailLayer />
         <UserCardLayer />
