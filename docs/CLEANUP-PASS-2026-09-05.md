@@ -4,35 +4,50 @@ Goal: reduce overlapping UI/logic, protect data integrity, and keep the product 
 
 ## Completed in this pass
 
-- Removed the obsolete `add-card-identity-layer.tsx` overlay. The canonical search/confirmation flow in `functional-layer.tsx` remains the single visible Add Card identity path.
-- Reduced the top toolbar from a long flat row to a focused everyday set plus a **Research Lab** menu.
-  - Core: Decision Brief, Portfolio Pulse, Edge Stack, Live Market, Collection, Sell Prep, Discovery, Action Center, Pokémon.
-  - Research Lab: analogs, playbooks, scorecard, validation tools, benchmark tools, performance/population research, etc.
-- Added a compatibility guard so legacy 100-card add writers cannot silently destroy rows from a 500-card portfolio.
-- Tightened league overrides: when multiple saved cards share a player, CardSignal no longer falls back to the first matching player if the visible exact card cannot be resolved.
-- Tightened Historical Analogs:
-  - current catalysts must be dated within seven days;
-  - historical velocity context is only accepted when a scan exists within 36 hours of the event baseline;
-  - prevents stale catalyst reads and distant-scan leakage into analog similarity.
+- Removed the obsolete `add-card-identity-layer.tsx` overlay. `functional-layer.tsx` is the single Add Card identity path.
+- Reduced the top toolbar to a focused everyday set plus a **Research Lab** menu.
+- Added a temporary compatibility guard so legacy 100-card add writers cannot silently destroy rows from a 500-card portfolio.
+- Tightened exact-card league editing and league inference.
+- Tightened Historical Analogs so stale catalysts and distant baseline scans cannot masquerade as contemporaneous context.
+- Migrated the primary Add Card writer from 100 to 500 cards.
+- Removed the first-generation generated/clip-art UI library from `public/assets`.
+- Removed generated-logo, background, slab-frame, camera-icon, collection-icon, badge, frame, and other static-art dependencies from the active UI.
+- Rebuilt the main dashboard shell, Card Detail fallback card, photo placeholders, portfolio empty state, radar ornaments, and market framing with CSS/native text only.
+- Removed the obsolete `PhotoCatalogGuardLayer` and `PhotoOcrFallbackLayer` interception overlays so there is no second hidden Add Card UI pipeline competing with the main form.
+- Removed unused Next.js starter SVGs and stray `.DS_Store` files from `public`.
+
+## Static UI policy
+
+CardSignal's application chrome is CSS-first.
+
+- Do not add generated clip art, decorative PNG/JPG/WebP assets, sprite sheets, faux slab frames, or image-based UI controls.
+- User-uploaded card photographs are expected and remain supported.
+- A real future brand mark/favicon can be added deliberately if needed; it should not become a dependency for layout or functionality.
+- Prefer CSS borders, gradients, typography, native symbols, and simple SVG/chart primitives produced by the application itself.
+
+This keeps the interface easier to maintain and prevents visual assets from hiding functional regressions.
 
 ## Known direct-write cleanup still to migrate
 
-The compatibility guard is intentionally temporary. These legacy add paths still contain direct `slice(0,100)` collection writes and should be migrated to the shared 500-card convention:
+The compatibility guard is intentionally temporary. These remaining feature paths still need their portfolio add writers migrated to the shared 500-card convention:
 
-- `src/app/functional-layer.tsx`
 - `src/app/discovery-radar-layer.tsx`
 - `src/app/market-scout-layer.tsx`
 
-Do not remove `collection-capacity-guard-layer.tsx` until all three direct add paths have been migrated and searched again for hidden portfolio truncation.
+The `slice(0,100)` cap on discovery *result caches* is not a portfolio-capacity bug and can remain bounded. Only writes to `cardsignal-added-cards` must honor the 500-card collection ceiling.
+
+Do not remove `collection-capacity-guard-layer.tsx` until both remaining collection writers have been migrated and the repository has been searched again for hidden portfolio truncation.
 
 ## Intake architecture
 
-The current photo flow has two layers by design:
+The intended Add Card path is now simpler:
 
-1. `PhotoCatalogGuardLayer` intercepts visual identification so a visual model cannot directly establish canonical identity.
-2. `PhotoOcrFallbackLayer` extracts factual clues and routes them back through catalog search/selection.
+1. Add Card form owns photo upload, manual entry, catalog search, and save.
+2. Photo identification may provide a clue, but catalog selection should establish canonical identity.
+3. Manual entry remains available when no catalog result is reliable.
+4. No second DOM interception layer should rewrite or compete with the form.
 
-`functional-layer.tsx` still contains older visual-identification code behind the same button. Because the guard intercepts the action, that code is currently redundant. A later cleanup should move the guarded photo/OCR/catalog flow into one component and delete the dead visual path rather than maintaining both indefinitely.
+The remaining intake cleanup is to make the visual-result handoff explicitly return to catalog confirmation instead of treating a visual suggestion as canonical.
 
 ## Product focus
 
