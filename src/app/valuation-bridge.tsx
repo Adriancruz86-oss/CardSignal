@@ -31,19 +31,28 @@ function readCards(): StoredCard[] {
   }
 }
 
-function findCard(player: string, meta: string) {
+function norm(v?: string) { return String(v || "").trim().replace(/\s+/g, " ").toLowerCase(); }
+function findCard(player: string, meta: string, cardId?: number) {
   const cards = readCards();
-  return cards.find((card) => card.player === player && card.meta === meta) || cards.find((card) => card.player === player) || null;
+  if (cardId != null) {
+    const byId = cards.find((card) => Number(card.id) === Number(cardId));
+    if (byId) return byId;
+  }
+  const exact = cards.filter((card) => norm(card.player) === norm(player) && (!meta || norm(card.meta) === norm(meta)));
+  if (exact.length === 1) return exact[0];
+  const samePlayer = cards.filter((card) => norm(card.player) === norm(player));
+  return samePlayer.length === 1 ? samePlayer[0] : null;
 }
 
-function openMarket(player: string, meta: string) {
-  const card = findCard(player, meta);
+function openMarket(player: string, meta: string, cardId?: number) {
+  const card = findCard(player, meta, cardId);
+  if (!card) return;
   window.dispatchEvent(new CustomEvent("cardsignal:open-market", {
     detail: {
-      cardId: card?.id,
-      player,
-      meta,
-      query: [player, meta].filter(Boolean).join(" ").replace(/\s*·\s*/g, " "),
+      cardId: card.id,
+      player: card.player || player,
+      meta: card.meta || meta,
+      query: [card.player || player, card.meta || meta].filter(Boolean).join(" ").replace(/\s*·\s*/g, " "),
     },
   }));
 }
@@ -54,23 +63,15 @@ function applyValuationFallback(detail: ValuationEventDetail) {
 
   const cards = readCards();
   if (!cards.length) return false;
+  const matchedCard = findCard(target.player || "", target.meta || "", target.cardId);
+  if (!matchedCard?.id) return false;
 
-  let matched = false;
   let snapshot: Record<string, unknown> = {};
   try {
     snapshot = JSON.parse(localStorage.getItem("cardsignal-live-valuation") || "{}");
   } catch {}
 
-  const updated = cards.map((card) => {
-    const sameId = target.cardId != null && Number(card.id) === Number(target.cardId);
-    const sameExactCard = Boolean(target.player && card.player === target.player && target.meta && card.meta === target.meta);
-    const samePlayerFallback = Boolean(target.player && card.player === target.player);
-
-    if (!sameId && !sameExactCard && !samePlayerFallback) return card;
-    if (matched && !sameId && !sameExactCard) return card;
-
-    matched = true;
-    return {
+  const updated = cards.map((card) => Number(card.id) === Number(matchedCard.id) ? {
       ...card,
       marketValue: Number(detail.marketValue),
       liveValuation: {
@@ -86,32 +87,27 @@ function applyValuationFallback(detail: ValuationEventDetail) {
         savedAt: snapshot.savedAt || new Date().toISOString(),
         acceptedComps: snapshot.acceptedComps,
       },
-    };
-  });
-
-  if (!matched) return false;
+    } : card);
 
   localStorage.setItem("cardsignal-added-cards", JSON.stringify(updated));
 
-  if (target.player) {
-    try {
-      const state = JSON.parse(localStorage.getItem("cardsignal-card-detail-state") || "{}");
-      const exactKey = `${target.player}|${target.meta || ""}`;
-      state[exactKey] = {
-        ...(state[exactKey] || {}),
-        marketValue: Number(detail.marketValue),
-        lastScan: "live comps · just now",
-      };
-      localStorage.setItem("cardsignal-card-detail-state", JSON.stringify(state));
-    } catch {}
-  }
+  try {
+    const state = JSON.parse(localStorage.getItem("cardsignal-card-detail-state") || "{}");
+    const exactKey = `${matchedCard.player || ""}|${matchedCard.meta || ""}`;
+    state[exactKey] = {
+      ...(state[exactKey] || {}),
+      marketValue: Number(detail.marketValue),
+      lastScan: "live comps · just now",
+    };
+    localStorage.setItem("cardsignal-card-detail-state", JSON.stringify(state));
+  } catch {}
 
   window.dispatchEvent(new CustomEvent("cardsignal:user-cards-changed"));
   window.dispatchEvent(new CustomEvent("cardsignal:valuation-applied", {
     detail: {
-      cardId: target.cardId,
-      player: target.player,
-      meta: target.meta,
+      cardId: matchedCard.id,
+      player: matchedCard.player,
+      meta: matchedCard.meta,
       marketValue: Number(detail.marketValue),
       confidence: detail.confidence,
       compCount: detail.compCount,
@@ -129,6 +125,7 @@ export default function ValuationBridge() {
       if (detail && !detail.querySelector(".cs-detail-live")) {
         const player = detail.querySelector<HTMLElement>(".cs-detail-head h2")?.textContent?.trim() || "";
         const meta = detail.querySelector<HTMLElement>(".cs-detail-head p")?.textContent?.trim() || "";
+        const cardId = Number(detail.dataset.userCardId || 0) || undefined;
         const analyze = detail.querySelector<HTMLButtonElement>(".cs-detail-analyze");
         if (player && analyze) {
           const wrap = document.createElement("div");
@@ -140,7 +137,7 @@ export default function ValuationBridge() {
           live.type = "button";
           live.className = "cs-detail-live";
           live.innerHTML = '<span>●</span> LIVE SOLD COMPS';
-          live.addEventListener("click", () => openMarket(player, meta));
+          live.addEventListener("click", () => openMarket(player, meta, cardId));
           wrap.appendChild(live);
         }
       }
@@ -149,6 +146,7 @@ export default function ValuationBridge() {
         if (article.querySelector(".cs-portfolio-live")) return;
         const player = article.querySelector<HTMLElement>(".cs-portfolio-copy strong")?.textContent?.trim() || "";
         const meta = article.querySelector<HTMLElement>(".cs-portfolio-copy > span")?.textContent?.trim() || "";
+        const cardId = Number(article.dataset.userCardId || 0) || undefined;
         const actions = article.querySelector<HTMLElement>(".cs-portfolio-actions");
         if (!player || !actions) return;
 
@@ -158,7 +156,7 @@ export default function ValuationBridge() {
         live.textContent = "LIVE COMPS";
         live.addEventListener("click", (event) => {
           event.stopPropagation();
-          openMarket(player, meta);
+          openMarket(player, meta, cardId);
         });
         actions.insertBefore(live, actions.firstChild);
       });
@@ -175,13 +173,12 @@ export default function ValuationBridge() {
     };
 
     const onApplied = (event: Event) => {
-      const detail = (event as CustomEvent<{ player?: string; meta?: string; marketValue?: number; savedAt?: string }>).detail;
-      if (!detail?.player || detail.marketValue == null) return;
+      const detail = (event as CustomEvent<{ cardId?: number; player?: string; meta?: string; marketValue?: number; savedAt?: string }>).detail;
+      if (detail?.marketValue == null) return;
 
       const modal = document.querySelector<HTMLElement>(".cs-detail-modal");
-      const modalPlayer = modal?.querySelector<HTMLElement>(".cs-detail-head h2")?.textContent?.trim();
-      const modalMeta = modal?.querySelector<HTMLElement>(".cs-detail-head p")?.textContent?.trim();
-      if (modal && modalPlayer === detail.player && (!detail.meta || modalMeta === detail.meta)) {
+      const modalId = Number(modal?.dataset.userCardId || 0);
+      if (modal && detail.cardId != null && modalId === Number(detail.cardId)) {
         const market = modal.querySelector<HTMLElement>(".cs-detail-market strong");
         const lastScan = modal.querySelector<HTMLElement>(".cs-detail-last b");
         if (market) market.textContent = `$${detail.marketValue.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
