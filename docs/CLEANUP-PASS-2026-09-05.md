@@ -6,14 +6,21 @@ Goal: reduce overlapping UI/logic, protect data integrity, and keep the product 
 
 - Removed the obsolete `add-card-identity-layer.tsx` overlay. `functional-layer.tsx` is the single Add Card identity path.
 - Reduced the top toolbar to a focused everyday set plus a **Research Lab** menu.
-- Added a temporary compatibility guard so legacy 100-card add writers cannot silently destroy rows from a 500-card portfolio.
 - Tightened exact-card league editing and league inference.
 - Tightened Historical Analogs so stale catalysts and distant baseline scans cannot masquerade as contemporaneous context.
-- Migrated the primary Add Card writer from 100 to 500 cards.
+- Migrated the primary Add Card, Discovery Radar, and Market Scout portfolio writers to the 500-card ceiling.
+- Removed the temporary `CollectionCapacityGuardLayer` after the known legacy 100-card collection writers were migrated.
+- Discovery Radar and Market Scout now dedupe on player + year + set + card number + variant rather than player/year/card-number shortcuts that could collapse legitimate parallels.
+- Discovery/Scout additions now retain a canonical-identity-shaped record for later exact-card analysis.
 - Removed the first-generation generated/clip-art UI library from `public/assets`.
 - Removed generated-logo, background, slab-frame, camera-icon, collection-icon, badge, frame, and other static-art dependencies from the active UI.
-- Rebuilt the main dashboard shell, Card Detail fallback card, photo placeholders, portfolio empty state, radar ornaments, and market framing with CSS/native text only.
+- Replaced the original mock-heavy dashboard with a lean CSS-only scaffold. It now starts with truthful empty states and lets the live data layers populate the interface.
+- Rebuilt Card Detail fallback card, photo placeholders, portfolio empty state, radar ornaments, and market framing with CSS/native text only.
 - Removed the obsolete `PhotoCatalogGuardLayer` and `PhotoOcrFallbackLayer` interception overlays so there is no second hidden Add Card UI pipeline competing with the main form.
+- Consolidated Add Card photo recognition and catalog confirmation into one component.
+- Fixed the photo-identification handoff: a visual result now fills search clues and deliberately returns the user to catalog selection instead of silently becoming canonical identity.
+- Added duplicate exact-card prevention and an explicit 500-card limit message to Add Card.
+- Removed the no-longer-used `tesseract.js` dependency.
 - Removed unused Next.js starter SVGs and stray `.DS_Store` files from `public`.
 
 ## Static UI policy
@@ -27,27 +34,24 @@ CardSignal's application chrome is CSS-first.
 
 This keeps the interface easier to maintain and prevents visual assets from hiding functional regressions.
 
-## Known direct-write cleanup still to migrate
+## Portfolio write policy
 
-The compatibility guard is intentionally temporary. These remaining feature paths still need their portfolio add writers migrated to the shared 500-card convention:
+All writes to `cardsignal-added-cards` must preserve the 500-card application ceiling.
 
-- `src/app/discovery-radar-layer.tsx`
-- `src/app/market-scout-layer.tsx`
-
-The `slice(0,100)` cap on discovery *result caches* is not a portfolio-capacity bug and can remain bounded. Only writes to `cardsignal-added-cards` must honor the 500-card collection ceiling.
-
-Do not remove `collection-capacity-guard-layer.tsx` until both remaining collection writers have been migrated and the repository has been searched again for hidden portfolio truncation.
+- Result caches may use smaller independent caps for performance; those are not portfolio limits.
+- New discovery/watchlist writers must use exact identity including variant/parallel when checking duplicates.
+- Do not reintroduce global `Storage.prototype` interception as a compatibility fix. Fix the writer directly.
 
 ## Intake architecture
 
-The intended Add Card path is now simpler:
+The intended Add Card path is now:
 
-1. Add Card form owns photo upload, manual entry, catalog search, and save.
-2. Photo identification may provide a clue, but catalog selection should establish canonical identity.
-3. Manual entry remains available when no catalog result is reliable.
-4. No second DOM interception layer should rewrite or compete with the form.
-
-The remaining intake cleanup is to make the visual-result handoff explicitly return to catalog confirmation instead of treating a visual suggestion as canonical.
+1. Add Card owns photo upload, manual entry, catalog search, and save.
+2. Photo recognition may propose player/year/set/card-number/parallel clues.
+3. The visual result is converted into a catalog search query.
+4. Catalog selection establishes confirmed identity.
+5. Manual entry can still be saved when no catalog match is reliable, but it remains explicitly unconfirmed.
+6. No secondary DOM interception layer should rewrite or compete with the form.
 
 ## Product focus
 
@@ -61,3 +65,7 @@ New work should default to strengthening these surfaces rather than adding new s
 6. Collection / Sell Prep — collector utility parity.
 
 Research tools can remain available in Research Lab without competing for the main navigation.
+
+## Verification still required
+
+The GitHub connector cannot execute the Next.js build. Run `npm run build` after pulling this cleanup batch and fix any compiler/runtime regressions before treating the pass as fully verified.
