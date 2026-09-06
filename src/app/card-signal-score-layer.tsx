@@ -6,7 +6,9 @@ import { getCardSignalScore } from "./card-signal-score";
 type Card={id:number;player:string;meta?:string;marketValue?:number;marketScan?:{scannedAt?:string;acceptedCount?:number;change7d?:number|null;velocity?:number|null;pulse?:"BUY MORE"|"HOLD"|"WATCH CLOSELY"|"SELL RISK"|"NOT ENOUGH DATA";confidence?:string}};
 const KEY="cardsignal-added-cards";
 function cards():Card[]{try{const v=JSON.parse(localStorage.getItem(KEY)||"[]");return Array.isArray(v)?v:[]}catch{return[]}}
-function findByText(player?:string,meta?:string){if(!player)return null;const all=cards();return all.find(c=>c.player===player&&(!meta||c.meta===meta))||all.find(c=>c.player===player)||null}
+function norm(v?:string){return String(v||"").trim().replace(/\s+/g," ").toLowerCase()}
+function findByText(player?:string,meta?:string){if(!player)return null;const all=cards(),exact=all.filter(c=>norm(c.player)===norm(player)&&(!meta||norm(c.meta)===norm(meta)));if(exact.length===1)return exact[0];const same=all.filter(c=>norm(c.player)===norm(player));return same.length===1?same[0]:null}
+function findForModal(modal:HTMLElement){const id=Number(modal.dataset.userCardId||0);if(id){const byId=cards().find(c=>c.id===id);if(byId)return byId}return findByText(modal.querySelector<HTMLElement>(".cs-detail-head h2")?.textContent?.trim(),modal.querySelector<HTMLElement>(".cs-detail-head p")?.textContent?.trim())}
 function safe(v:string){return v.replace(/[<>]/g,"")}
 
 export default function CardSignalScoreLayer(){
@@ -30,9 +32,7 @@ export default function CardSignalScoreLayer(){
    }
    const modal=document.querySelector<HTMLElement>(".cs-detail-modal");
    if(modal){
-    const player=modal.querySelector<HTMLElement>(".cs-detail-head h2")?.textContent?.trim();
-    const meta=modal.querySelector<HTMLElement>(".cs-detail-head p")?.textContent?.trim();
-    const card=findByText(player,meta);
+    const card=findForModal(modal);
     if(card){
      const sc=getCardSignalScore(card);let strip=modal.querySelector<HTMLElement>(".cs-unified-score");
      if(!strip){strip=document.createElement("div");strip.className="cs-unified-score";modal.querySelector(".cs-detail-head")?.insertAdjacentElement("afterend",strip)}
