@@ -51,6 +51,7 @@ import CollectionOrganizerLayer from "./collection-organizer-layer";
 import SellPrepLayer from "./sell-prep-layer";
 import CloudAuthLayer from "./cloud-auth-layer";
 import CloudSyncLayer from "./cloud-sync-layer";
+import DataIntegrityV3Layer from "./data-integrity-v3-layer";
 import "./globals.css";
 import "./asset-overrides.css";
 import "./live-market-click-fix.css";
@@ -131,6 +132,7 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
         <CollectionOrganizerLayer />
         <SellPrepLayer />
         <CloudSyncLayer />
+        <DataIntegrityV3Layer />
         <CloudAuthLayer />
       </body>
     </html>

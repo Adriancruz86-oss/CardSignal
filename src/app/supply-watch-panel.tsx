@@ -182,7 +182,11 @@ export default function SupplyWatchPanel({
       );
       const saved = JSON.parse(localStorage.getItem(CARD_KEY) || "[]");
       if (Array.isArray(saved)) {
-        const supplySnapshot: SupplyEvidence & { provider: string } = {
+        const supplySnapshot: SupplyEvidence & {
+          provider: string;
+          matchingVersion: number;
+        } = {
+          matchingVersion: MATCHING_VERSION,
           scannedAt: snap.scannedAt,
           provider: snap.provider,
           activeAccepted: snap.acceptedCount,
