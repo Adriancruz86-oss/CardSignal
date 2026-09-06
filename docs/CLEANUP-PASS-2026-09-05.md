@@ -23,6 +23,37 @@ Goal: reduce overlapping UI/logic, protect data integrity, and keep the product 
 - Removed the no-longer-used `tesseract.js` dependency.
 - Removed unused Next.js starter SVGs and stray `.DS_Store` files from `public`.
 
+## Exact-card identity integrity pass
+
+Card-level state must now resolve to a saved card ID rather than silently falling back to the first card belonging to the same player.
+
+- Card Detail writes `data-user-card-id` on the open modal so downstream tools have a stable exact-card target.
+- Card Detail itself now resolves by card ID first, exact normalized player + metadata second, and only allows a player-only fallback when exactly one saved card exists for that player.
+- League editing reads the open card ID and updates only that exact saved card.
+- Supply Watch resolves the exact open card before attaching or writing supply history.
+- Market Context resolves the exact open card before reading card-level velocity and segment state.
+- Unified Score injection resolves the Card Detail modal by card ID and refuses ambiguous player-only matches.
+- Live valuation application and low-confidence valuation override update one resolved card ID only; ambiguous parallels are not modified.
+- Opportunity actions resolve exact card IDs before rescanning, moving between owned/watchlist, journaling, dismissing, or flagging buy/sell candidates.
+- Grading-population history remains keyed by card ID. 30D/90D comparisons are additionally constrained to the same provider and grade.
+- Restored the missing grading-population alert layer. Population acceleration alerts are generated per exact `cardId + provider + grade` combination.
+- Player performance remains intentionally player-level, but the open exact card determines league context so a same-name or cross-league record cannot be borrowed accidentally.
+- Signal Scorecard performance lookup is now also league-scoped using the card's resolved league.
+- Catalyst headlines remain intentionally player-level. In Action Center, one player catalyst now fans out to every matching saved card by exact card ID rather than attaching to only one arbitrary card.
+- Catalyst Outcome rows remain card-ID-specific. A catalyst/card outcome now requires a contemporaneous price baseline no more than 36 hours before or 12 hours after first observation; old stale scans are no longer accepted as the event baseline.
+- Later outcome scans must occur after the baseline and stay inside the configured horizon tolerance.
+
+### Resolver rule
+
+For card-level reads or writes, use this order:
+
+1. exact saved card ID (`data-user-card-id`, event `cardId`, or stored `cardId`),
+2. exact normalized player + visible card metadata when it resolves to one row,
+3. player-only fallback only when exactly one saved card exists for that player,
+4. otherwise stop and show/return unresolved rather than guessing.
+
+Player-level datasets such as news catalysts and real-world performance can remain keyed by player, but any application of those datasets to collection state must retain the exact card ID.
+
 ## Static UI policy
 
 CardSignal's application chrome is CSS-first.
