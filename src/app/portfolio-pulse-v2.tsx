@@ -78,7 +78,9 @@ type ScanResponse = {
 
 const STORAGE_KEY = "cardsignal-added-cards";
 const MAX_CARDS = 500;
-const CONCURRENCY = 4;
+const CONCURRENCY = 2;
+type ScanScope = "needs-data" | "stale" | "all";
+type ScanProvider = "soldcomps" | "both";
 
 function readCards(): StoredCard[] {
   try {
@@ -138,10 +140,29 @@ function scanParams(card: StoredCard) {
   });
 }
 
+function hasExactIdentity(card: StoredCard) {
+  const p = scanParams(card);
+  const grader = p.get("grader") || "";
+  return Boolean(
+    p.get("player") &&
+    p.get("year") &&
+    p.get("set") &&
+    p.get("cardNumber") &&
+    (grader.toLowerCase() === "raw" || (grader && p.get("grade"))),
+  );
+}
+
+function isStale(card: StoredCard) {
+  const scanned = Date.parse(card.marketScan?.scannedAt || "");
+  return !Number.isFinite(scanned) || Date.now() - scanned > 7 * 86400000;
+}
+
 export default function PortfolioPulseV2() {
   const [open, setOpen] = useState(false),
     [cards, setCards] = useState<StoredCard[]>([]),
     [scanning, setScanning] = useState(false),
+    [scanScope, setScanScope] = useState<ScanScope>("needs-data"),
+    [scanProvider, setScanProvider] = useState<ScanProvider>("soldcomps"),
     [visibleCount, setVisibleCount] = useState(15),
     [progress, setProgress] = useState("");
   const cancelRef = useRef(false);
@@ -170,11 +191,29 @@ export default function PortfolioPulseV2() {
     [rows],
   );
   const benchmarkCount = cards.filter((c) => c.benchmark).length;
+  const eligibleTargets = useMemo(
+    () =>
+      cards
+        .filter((c) => c.mode !== "watching" && c.player)
+        .filter(hasExactIdentity)
+        .filter((c) =>
+          scanScope === "all"
+            ? true
+            : scanScope === "stale"
+              ? isStale(c)
+              : !c.marketScan || (c.marketScan.acceptedCount || 0) < 3,
+        )
+        .slice(0, MAX_CARDS),
+    [cards, scanScope],
+  );
 
   const scanOne = async (card: StoredCard) => {
     try {
       const r = await fetch(
-        `/api/portfolio-scan?${scanParams(card).toString()}`,
+        `/api/portfolio-scan?${new URLSearchParams({
+          ...Object.fromEntries(scanParams(card)),
+          provider: scanProvider,
+        }).toString()}`,
         { cache: "no-store" },
       );
       const j = (await r.json()) as ScanResponse;
@@ -202,13 +241,21 @@ export default function PortfolioPulseV2() {
 
   const scanPortfolio = async () => {
     if (scanning) return;
-    const targets = readCards()
-      .filter((c) => c.mode !== "watching" && c.player)
-      .slice(0, MAX_CARDS);
+    const targetIds = new Set(eligibleTargets.map((card) => card.id));
+    const targets = readCards().filter((card) => targetIds.has(card.id));
     if (!targets.length) {
-      setProgress("No owned cards to scan.");
+      setProgress(
+        "No cards match this scan scope with a complete exact identity. Edit identity first when year, set, card number, or condition is missing.",
+      );
       return;
     }
+    const requestCount = targets.length * (scanProvider === "both" ? 2 : 1);
+    if (
+      !window.confirm(
+        `Scan ${targets.length} card${targets.length === 1 ? "" : "s"} using approximately ${requestCount} provider request${requestCount === 1 ? "" : "s"}?`,
+      )
+    )
+      return;
     setScanning(true);
     cancelRef.current = false;
     let completed = 0,
@@ -325,6 +372,31 @@ export default function PortfolioPulseV2() {
               </p>
             </div>
             <div className="cs-pulse-actions">
+              <label className="cs-pulse-scan-setting">
+                <span>SCAN</span>
+                <select
+                  value={scanScope}
+                  onChange={(e) => setScanScope(e.target.value as ScanScope)}
+                  disabled={scanning}
+                >
+                  <option value="needs-data">Needs data only</option>
+                  <option value="stale">Stale / never scanned</option>
+                  <option value="all">All exact identities</option>
+                </select>
+              </label>
+              <label className="cs-pulse-scan-setting">
+                <span>PROVIDER</span>
+                <select
+                  value={scanProvider}
+                  onChange={(e) =>
+                    setScanProvider(e.target.value as ScanProvider)
+                  }
+                  disabled={scanning}
+                >
+                  <option value="soldcomps">SoldComps only</option>
+                  <option value="both">SoldComps + Card API</option>
+                </select>
+              </label>
               <button
                 className="scan"
                 onClick={scanPortfolio}
@@ -345,7 +417,23 @@ export default function PortfolioPulseV2() {
               )}
               <span>
                 {cards.length} total · {benchmarkCount} benchmark ·{" "}
-                {CONCURRENCY} concurrent
+                {CONCURRENCY} concurrent · incomplete identities skipped
+              </span>
+            </div>
+            <div className="cs-pulse-quota-note">
+              <strong>
+                {eligibleTargets.length} eligible card
+                {eligibleTargets.length === 1 ? "" : "s"} · about{" "}
+                {eligibleTargets.length * (scanProvider === "both" ? 2 : 1)}{" "}
+                provider request
+                {eligibleTargets.length * (scanProvider === "both" ? 2 : 1) ===
+                1
+                  ? ""
+                  : "s"}
+              </strong>
+              <span>
+                SoldComps only uses one request per card. Both providers doubles
+                usage and is best reserved for cards that need corroboration.
               </span>
             </div>
             {progress && <div className="cs-pulse-progress">{progress}</div>}
@@ -520,6 +608,40 @@ export default function PortfolioPulseV2() {
           color: #6d8d9c;
           font-size: 8px;
         }
+        .cs-pulse-scan-setting {
+          display: grid;
+          gap: 4px;
+        }
+        .cs-pulse-scan-setting > span {
+          color: #668797;
+          font-size: 7px;
+          font-weight: 900;
+          letter-spacing: 0.1em;
+        }
+        .cs-pulse-scan-setting select {
+          min-width: 150px;
+          height: 36px;
+          padding: 0 10px;
+          border: 1px solid rgba(83, 210, 255, 0.17);
+          border-radius: 8px;
+          background: #071724;
+          color: #d8edf5;
+          font-size: 9px;
+        }
+        .cs-pulse-quota-note {
+          display: flex;
+          gap: 10px;
+          align-items: baseline;
+          margin: -8px 0 14px;
+          color: #668797;
+          font-size: 8px;
+        }
+        .cs-pulse-quota-note strong {
+          color: #8dd8ed;
+        }
+        .cs-pulse-quota-note span {
+          line-height: 1.5;
+        }
         .cs-pulse-progress {
           padding: 9px;
           border: 1px solid rgba(83, 210, 255, 0.12);
@@ -627,6 +749,14 @@ export default function PortfolioPulseV2() {
             grid-template-columns: 1fr 1fr;
           }
           .cs-pulse-actions {
+            align-items: flex-start;
+            flex-direction: column;
+          }
+          .cs-pulse-scan-setting,
+          .cs-pulse-scan-setting select {
+            width: 100%;
+          }
+          .cs-pulse-quota-note {
             align-items: flex-start;
             flex-direction: column;
           }
