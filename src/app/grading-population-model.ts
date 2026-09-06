@@ -47,12 +47,12 @@ export function populationTrend(history:PopulationSnapshot[],cardId:number,provi
   return{current,prior,change,changePct,days,dailyRatePct,status};
 }
 
-export function nearestTrend(history:PopulationSnapshot[],cardId:number,daysAgo:number){
-  const rows=history.filter(x=>x.cardId===cardId).sort((a,b)=>new Date(b.capturedAt).getTime()-new Date(a.capturedAt).getTime());
+export function nearestTrend(history:PopulationSnapshot[],cardId:number,daysAgo:number,provider?:GradingProvider,grade?:string){
+  const rows=history.filter(x=>x.cardId===cardId&&(!provider||x.provider===provider)&&(!grade||x.grade===grade)).sort((a,b)=>new Date(b.capturedAt).getTime()-new Date(a.capturedAt).getTime());
   const current=rows[0];if(!current)return null;
   const target=new Date(current.capturedAt).getTime()-daysAgo*86400000;
   const prior=rows.filter(x=>new Date(x.capturedAt).getTime()<=target).sort((a,b)=>Math.abs(new Date(a.capturedAt).getTime()-target)-Math.abs(new Date(b.capturedAt).getTime()-target))[0];
-  if(!prior||prior.provider!==current.provider||prior.grade!==current.grade)return null;
+  if(!prior)return null;
   const change=current.totalPop-prior.totalPop;
   const pct=prior.totalPop>0?change/prior.totalPop*100:null;
   return{days:daysAgo,change,pct};
