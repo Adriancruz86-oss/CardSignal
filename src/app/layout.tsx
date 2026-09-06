@@ -10,8 +10,6 @@ import ValuationOverride from "./valuation-override";
 import DataSourcesLayer from "./data-sources-layer";
 import SignalLabLayer from "./signal-lab-layer";
 import SignalLabFallbackLayer from "./signal-lab-fallback-layer";
-import PhotoCatalogGuardLayer from "./photo-catalog-guard-layer";
-import PhotoOcrFallbackLayer from "./photo-ocr-fallback-layer";
 import PortfolioPulseLayer from "./portfolio-pulse-v2";
 import DashboardLiveLayer from "./dashboard-live-layer";
 import ScanHistoryAlertsLayer from "./scan-history-alerts-layer";
@@ -63,70 +61,63 @@ import "./ui-polish-pass.css";
 
 const geistSans = Geist({ variable: "--font-geist-sans", subsets: ["latin"] });
 const geistMono = Geist_Mono({ variable: "--font-geist-mono", subsets: ["latin"] });
-
 export const metadata: Metadata = { title: "CardSignal", description: "Know before the card market moves." };
 
 export default function RootLayout({ children }: LayoutProps<"/">) {
-  return (
-    <html lang="en" className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}>
-      <body className="min-h-full flex flex-col">
-        {children}
-        <CollectionCapacityGuardLayer />
-        <FunctionalLayer />
-        <CardDetailLayer />
-        <UserCardLayer />
-        <PortfolioLeagueFilterLayer />
-        <LiveMarketLayer />
-        <ValuationBridge />
-        <ValuationOverride />
-        <DataSourcesLayer />
-        <SignalLabLayer />
-        <SignalLabFallbackLayer />
-        <PhotoCatalogGuardLayer />
-        <PhotoOcrFallbackLayer />
-        <PortfolioPulseLayer />
-        <DashboardLiveLayer />
-        <ScanHistoryAlertsLayer />
-        <LongitudinalScanHistoryLayer />
-        <HistoryHomeBridge />
-        <SupplyWatchBridgeLayer />
-        <ActionCenterLayer />
-        <TopToolsNavLayer />
-        <StatCardNavigationLayer />
-        <CardSignalScoreLayer />
-        <PortfolioWorkbenchLayer />
-        <CatalystCenterLayer />
-        <CatalystIntegrationLayer />
-        <CatalystHistoryLayer />
-        <CatalystOutcomeLayer />
-        <OpportunityFeedLayer />
-        <OpportunityActionsLayer />
-        <DecisionJournalLayer />
-        <DiscoveryRadarLayer />
-        <MarketScoutLayer />
-        <MarketContextLayer />
-        <CardLeagueEditorLayer />
-        <PlayerPerformanceLayer />
-        <PerformanceWatchLayer />
-        <GradingPopulationLayer />
-        <GradingPopulationAlertsLayer />
-        <SegmentExplorerLayer />
-        <BenchmarkPortfolioLayer />
-        <BenchmarkHealthLayer />
-        <BenchmarkScanReadinessLayer />
-        <ValidationCohortLayer />
-        <PokemonPortfolioLayer />
-        <EdgeStackLayer />
-        <HistoricalAnalogsLayer />
-        <PatternPlaybookLayer />
-        <SignalScorecardLayer />
-        <SignalAlertBridgeLayer />
-        <DecisionBriefLayer />
-        <CollectionOrganizerLayer />
-        <SellPrepLayer />
-        <CloudSyncLayer />
-        <CloudAuthLayer />
-      </body>
-    </html>
-  );
+  return <html lang="en" className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}><body className="min-h-full flex flex-col">
+    {children}
+    <CollectionCapacityGuardLayer />
+    <FunctionalLayer />
+    <CardDetailLayer />
+    <UserCardLayer />
+    <PortfolioLeagueFilterLayer />
+    <LiveMarketLayer />
+    <ValuationBridge />
+    <ValuationOverride />
+    <DataSourcesLayer />
+    <SignalLabLayer />
+    <SignalLabFallbackLayer />
+    <PortfolioPulseLayer />
+    <DashboardLiveLayer />
+    <ScanHistoryAlertsLayer />
+    <LongitudinalScanHistoryLayer />
+    <HistoryHomeBridge />
+    <SupplyWatchBridgeLayer />
+    <ActionCenterLayer />
+    <TopToolsNavLayer />
+    <StatCardNavigationLayer />
+    <CardSignalScoreLayer />
+    <PortfolioWorkbenchLayer />
+    <CatalystCenterLayer />
+    <CatalystIntegrationLayer />
+    <CatalystHistoryLayer />
+    <CatalystOutcomeLayer />
+    <OpportunityFeedLayer />
+    <OpportunityActionsLayer />
+    <DecisionJournalLayer />
+    <DiscoveryRadarLayer />
+    <MarketScoutLayer />
+    <MarketContextLayer />
+    <CardLeagueEditorLayer />
+    <PlayerPerformanceLayer />
+    <PerformanceWatchLayer />
+    <GradingPopulationLayer />
+    <GradingPopulationAlertsLayer />
+    <SegmentExplorerLayer />
+    <BenchmarkPortfolioLayer />
+    <BenchmarkHealthLayer />
+    <BenchmarkScanReadinessLayer />
+    <ValidationCohortLayer />
+    <PokemonPortfolioLayer />
+    <EdgeStackLayer />
+    <HistoricalAnalogsLayer />
+    <PatternPlaybookLayer />
+    <SignalScorecardLayer />
+    <SignalAlertBridgeLayer />
+    <DecisionBriefLayer />
+    <CollectionOrganizerLayer />
+    <SellPrepLayer />
+    <CloudSyncLayer />
+    <CloudAuthLayer />
+  </body></html>;
 }
