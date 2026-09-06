@@ -17,7 +17,7 @@ export function getCardSignalScore(card:ScoreCard):CardSignalScore{
   const s=card.marketScan;
   if(!s)return{score:0,label:"UNSCANNED",tone:"data",components:{price:0,velocity:0,evidence:0,confidence:0,freshness:0,supply:0}};
   const accepted=Math.max(0,Number(s.acceptedCount||0));
-  if(accepted<3||s.pulse==="NOT ENOUGH DATA")return{score:Math.min(49,18+Math.min(accepted,3)*8),label:"NEEDS DATA",tone:"data",components:{price:0,velocity:0,evidence:Math.round(clamp(accepted/10,0,1)*20),confidence:0,freshness:0,supply:0}};
+  if(accepted<3||s.pulse==="NOT ENOUGH DATA")return{score:Math.min(36,accepted*12),label:"NEEDS DATA",tone:"data",components:{price:0,velocity:0,evidence:Math.round(clamp(accepted/10,0,1)*20),confidence:0,freshness:0,supply:0}};
 
   const change=s.change7d==null?0:Number(s.change7d);
   const price=Math.round(clamp(15+clamp(change,-20,20)*0.75,0,30));

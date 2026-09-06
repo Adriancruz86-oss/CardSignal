@@ -132,6 +132,27 @@ function norm(v?: string) {
     .replace(/\s+/g, " ")
     .toLowerCase();
 }
+function resolvedIdentity(card: Card) {
+  const canonical = card.canonicalIdentity || {};
+  const parts = String(card.meta || "")
+    .split("·")
+    .map((part) => part.trim());
+  const metaYear = parts.find((part) => /^(?:19|20)\d{2}(?:-\d{2})?$/.test(part));
+  const metaNumber = parts.find((part) => /^#[a-z0-9-]+$/i.test(part));
+  const metaSet = parts.find(
+    (part) =>
+      part !== metaYear &&
+      part !== metaNumber &&
+      !/^(raw|psa|bgs|sgc|cgc)\b/i.test(part),
+  );
+  return {
+    playerName: canonical.playerName || card.player,
+    year: canonical.year || card.year || metaYear || "",
+    setName: canonical.setName || card.setName || metaSet || "",
+    cardNumber: canonical.cardNumber || card.cardNumber || metaNumber?.slice(1) || "",
+    variation: canonical.variation || card.variant || "",
+  };
+}
 function tone(p?: Pulse) {
   return p === "BUY MORE"
     ? "buy"
@@ -296,7 +317,7 @@ export default function CardDetailLayer() {
     if (!card || scanning) return;
     setScanning(true);
     setError("");
-    const id = card.canonicalIdentity || {},
+    const id = resolvedIdentity(card),
       p = new URLSearchParams({
         player: id.playerName || card.player,
         year: id.year || card.year || "",
@@ -361,7 +382,7 @@ export default function CardDetailLayer() {
       confidence: s.confidence,
     });
   const sales = s?.acceptedSales || [],
-    id = card.canonicalIdentity || {};
+    id = resolvedIdentity(card);
   return (
     <div
       className="cs-detail-backdrop"

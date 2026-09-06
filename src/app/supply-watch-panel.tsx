@@ -24,6 +24,7 @@ type Snapshot = {
   medianAsk: number | null;
   highestAsk: number | null;
   identityConfidence?: "HIGH" | "MEDIUM" | "LOW";
+  matchingVersion?: number;
   listings: Listing[];
 };
 type ApiResponse = Partial<Snapshot> & { ok: boolean; error?: string };
@@ -38,7 +39,8 @@ type Props = {
   identityConfirmed?: boolean;
 };
 const HISTORY_KEY = "cardsignal-supply-history",
-  CARD_KEY = "cardsignal-added-cards";
+  CARD_KEY = "cardsignal-added-cards",
+  MATCHING_VERSION = 2;
 function readHistory(): Snapshot[] {
   try {
     const v = JSON.parse(localStorage.getItem(HISTORY_KEY) || "[]");
@@ -82,7 +84,13 @@ export default function SupplyWatchPanel({
     [cardId, version],
   );
   const current = history[0] || null,
-    previous = history[1] || null;
+    previous =
+      history.find(
+        (row, index) =>
+          index > 0 &&
+          row.matchingVersion === MATCHING_VERSION &&
+          row.identityConfidence === current?.identityConfidence,
+      ) || null;
   const inventoryDelta =
       current && previous
         ? delta(current.acceptedCount, previous.acceptedCount)
@@ -142,11 +150,17 @@ export default function SupplyWatchPanel({
         medianAsk: j.medianAsk ?? null,
         highestAsk: j.highestAsk ?? null,
         identityConfidence,
+        matchingVersion: MATCHING_VERSION,
         listings: Array.isArray(j.listings) ? j.listings : [],
       };
       const old =
         readHistory()
           .filter((x) => x.cardId === cardId)
+          .filter(
+            (x) =>
+              x.matchingVersion === MATCHING_VERSION &&
+              x.identityConfidence === identityConfidence,
+          )
           .sort(
             (a, b) => Date.parse(b.scannedAt) - Date.parse(a.scannedAt),
           )[0] || null;
