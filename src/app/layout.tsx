@@ -14,7 +14,6 @@ import DashboardLiveLayer from "./dashboard-live-layer";
 import ScanHistoryAlertsLayer from "./scan-history-alerts-layer";
 import LongitudinalScanHistoryLayer from "./longitudinal-scan-history-layer";
 import HistoryHomeBridge from "./history-home-bridge";
-import SupplyWatchBridgeLayer from "./supply-watch-bridge-layer";
 import ActionCenterLayer from "./action-center-layer";
 import TopToolsNavLayer from "./top-tools-nav-layer";
 import StatCardNavigationLayer from "./stat-card-navigation-layer";
@@ -80,7 +79,6 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
     <ScanHistoryAlertsLayer />
     <LongitudinalScanHistoryLayer />
     <HistoryHomeBridge />
-    <SupplyWatchBridgeLayer />
     <ActionCenterLayer />
     <TopToolsNavLayer />
     <StatCardNavigationLayer />

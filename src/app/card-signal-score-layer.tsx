@@ -3,7 +3,7 @@
 import { useEffect } from "react";
 import { getCardSignalScore } from "./card-signal-score";
 
-type Card={id:number;player:string;meta?:string;marketValue?:number;marketScan?:{scannedAt?:string;acceptedCount?:number;change7d?:number|null;velocity?:number|null;pulse?:"BUY MORE"|"HOLD"|"WATCH CLOSELY"|"SELL RISK"|"NOT ENOUGH DATA";confidence?:string}};
+type Card={id:number;player:string;meta?:string;marketValue?:number;supplySnapshot?:import("./supply-signal").SupplyEvidence;marketScan?:{scannedAt?:string;acceptedCount?:number;change7d?:number|null;velocity?:number|null;pulse?:"BUY MORE"|"HOLD"|"WATCH CLOSELY"|"SELL RISK"|"NOT ENOUGH DATA";confidence?:string}};
 const KEY="cardsignal-added-cards";
 function cards():Card[]{try{const v=JSON.parse(localStorage.getItem(KEY)||"[]");return Array.isArray(v)?v:[]}catch{return[]}}
 function norm(v?:string){return String(v||"").trim().replace(/\s+/g," ").toLowerCase()}
@@ -36,7 +36,7 @@ export default function CardSignalScoreLayer(){
     if(card){
      const sc=getCardSignalScore(card);let strip=modal.querySelector<HTMLElement>(".cs-unified-score");
      if(!strip){strip=document.createElement("div");strip.className="cs-unified-score";modal.querySelector(".cs-detail-head")?.insertAdjacentElement("afterend",strip)}
-     if(strip){const c=sc.components;const cls=`cs-unified-score ${sc.tone}`;const html=`<div class="cs-us-main"><small>CARDSIGNAL SCORE</small><strong>${sc.score||"—"}</strong><span>${safe(sc.label)}</span></div><div class="cs-us-components"><p><span>Price direction</span><b>${c.price}/30</b></p><p><span>Sales velocity</span><b>${c.velocity}/20</b></p><p><span>Market evidence</span><b>${c.evidence}/20</b></p><p><span>Confidence</span><b>${c.confidence}/15</b></p><p><span>Freshness</span><b>${c.freshness}/15</b></p></div>`;if(strip.className!==cls)strip.className=cls;if(strip.innerHTML!==html)strip.innerHTML=html;}
+     if(strip){const c=sc.components;const cls=`cs-unified-score ${sc.tone}`;const supply=c.supply>0?`+${c.supply}`:String(c.supply);const html=`<div class="cs-us-main"><small>CARDSIGNAL SCORE</small><strong>${sc.score||"—"}</strong><span>${safe(sc.label)}</span></div><div class="cs-us-components"><p><span>Price direction</span><b>${c.price}/30</b></p><p><span>Sales velocity</span><b>${c.velocity}/20</b></p><p><span>Market evidence</span><b>${c.evidence}/20</b></p><p><span>Confidence</span><b>${c.confidence}/15</b></p><p><span>Freshness</span><b>${c.freshness}/15</b></p><p><span>Supply evidence</span><b>${supply}</b></p></div>`;if(strip.className!==cls)strip.className=cls;if(strip.innerHTML!==html)strip.innerHTML=html;}
     }
    }
   };

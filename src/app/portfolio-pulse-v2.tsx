@@ -1,11 +1,13 @@
 "use client";
 
 import {useEffect,useMemo,useRef,useState} from "react";
+import {effectivePulse,type SupplyEvidence} from "./supply-signal";
+import {getCardSignalScore} from "./card-signal-score";
 
 type Identity={year?:string;setName?:string;cardNumber?:string;playerName?:string;variation?:string;cardId?:string};
 type PulseStatus="BUY MORE"|"HOLD"|"WATCH CLOSELY"|"SELL RISK"|"NOT ENOUGH DATA";
 type MarketScan={scannedAt:string;acceptedCount:number;rejectedCount:number;currentMedian:number|null;recentMedian:number|null;priorMedian:number|null;change7d:number|null;recentSales:number;velocity:number|null;pulse:PulseStatus;confidence:string;elapsedMs:number};
-type StoredCard={id:number;player:string;meta?:string;year?:string;setName?:string;cardNumber?:string;variant?:string;mode?:"owned"|"watching";score?:number;move?:string;tone?:"buy"|"hold"|"sell";marketValue?:number;demo?:boolean;benchmark?:boolean;catalogConfirmed?:boolean;catalogSource?:string;canonicalIdentity?:Identity;liveValuation?:{compCount?:number;median?:number;confidence?:string;provider?:string;savedAt?:string};marketScan?:MarketScan};
+type StoredCard={id:number;player:string;meta?:string;year?:string;setName?:string;cardNumber?:string;variant?:string;mode?:"owned"|"watching";score?:number;move?:string;tone?:"buy"|"hold"|"sell";marketValue?:number;demo?:boolean;benchmark?:boolean;catalogConfirmed?:boolean;catalogSource?:string;canonicalIdentity?:Identity;liveValuation?:{compCount?:number;median?:number;confidence?:string;provider?:string;savedAt?:string};marketScan?:MarketScan;supplySnapshot?:SupplyEvidence};
 type ScanResponse={ok:boolean;error?:string;elapsedMs?:number;acceptedCount?:number;rejectedCount?:number;currentMedian?:number|null;recentMedian?:number|null;priorMedian?:number|null;change7d?:number|null;recentSales?:number;velocity?:number|null;pulse?:PulseStatus;confidence?:string};
 
 const STORAGE_KEY="cardsignal-added-cards";
@@ -14,9 +16,8 @@ const CONCURRENCY=4;
 
 function readCards():StoredCard[]{try{const v=JSON.parse(localStorage.getItem(STORAGE_KEY)||"[]");return Array.isArray(v)?v:[]}catch{return[]}}
 function writeCards(cards:StoredCard[]){localStorage.setItem(STORAGE_KEY,JSON.stringify(cards.slice(0,MAX_CARDS)));window.dispatchEvent(new Event("cardsignal:user-cards-changed"))}
-function classify(card:StoredCard){const s=card.marketScan;return{...card,pulse:s?.pulse||"NOT ENOUGH DATA" as PulseStatus,change7d:s?.change7d??null,velocity:s?.velocity??null,confidence:s?.confidence||"LOW",acceptedCount:s?.acceptedCount||0}}
+function classify(card:StoredCard){const s=card.marketScan;return{...card,pulse:effectivePulse(s?.pulse,s?.change7d,card.supplySnapshot) as PulseStatus,change7d:s?.change7d??null,velocity:s?.velocity??null,confidence:s?.confidence||"LOW",acceptedCount:s?.acceptedCount||0}}
 function statusClass(s:PulseStatus){return s==="BUY MORE"?"buy":s==="SELL RISK"?"sell":s==="WATCH CLOSELY"?"watch":s==="HOLD"?"hold":"nodata"}
-function scoreFromScan(scan:MarketScan){if(scan.pulse==="BUY MORE")return Math.min(95,72+Math.round((scan.change7d||0)/2)+(scan.velocity||0)/10);if(scan.pulse==="SELL RISK")return Math.max(20,45+Math.round((scan.change7d||0)/2));if(scan.pulse==="WATCH CLOSELY")return 58;if(scan.pulse==="HOLD")return 64;return 0}
 function scanParams(card:StoredCard){const id=card.canonicalIdentity||{};return new URLSearchParams({player:id.playerName||card.player,year:id.year||card.year||"",set:id.setName||card.setName||"",cardNumber:id.cardNumber||card.cardNumber||"",variant:id.variation||card.variant||""})}
 
 export default function PortfolioPulseV2(){
@@ -37,7 +38,7 @@ export default function PortfolioPulseV2(){
   try{
    for(let start=0;start<targets.length;start+=CONCURRENCY){
     if(cancelRef.current)break;const batch=targets.slice(start,start+CONCURRENCY);const results=await Promise.all(batch.map(async card=>({card,scan:await scanOne(card)})));let next=readCards();
-    for(const {card,scan} of results){completed++;if(!scan){failed++;continue}if(scan.acceptedCount>=3)withData++;next=next.map(c=>c.id===card.id?{...c,marketScan:scan,marketValue:scan.currentMedian??c.marketValue??0,move:scan.change7d==null?"NEEDS TREND DATA":`${scan.change7d>=0?"+":""}${scan.change7d.toFixed(1)}% 7D`,score:Math.round(scoreFromScan(scan)),tone:scan.pulse==="BUY MORE"?"buy":scan.pulse==="SELL RISK"?"sell":"hold",liveValuation:{...(c.liveValuation||{}),provider:"Portfolio Scan",compCount:scan.acceptedCount,median:scan.currentMedian??undefined,confidence:scan.confidence,savedAt:scan.scannedAt}}:c)}
+    for(const {card,scan} of results){completed++;if(!scan){failed++;continue}if(scan.acceptedCount>=3)withData++;next=next.map(c=>{if(c.id!==card.id)return c;const updated={...c,marketScan:scan,marketValue:scan.currentMedian??c.marketValue??0};const pulse=effectivePulse(scan.pulse,scan.change7d,c.supplySnapshot);return{...updated,move:scan.change7d==null?"NEEDS TREND DATA":`${scan.change7d>=0?"+":""}${scan.change7d.toFixed(1)}% 7D`,score:getCardSignalScore(updated).score,tone:pulse==="BUY MORE"?"buy":pulse==="SELL RISK"?"sell":"hold",liveValuation:{...(c.liveValuation||{}),provider:"Portfolio Scan",compCount:scan.acceptedCount,median:scan.currentMedian??undefined,confidence:scan.confidence,savedAt:scan.scannedAt}}})}
     writeCards(next);refresh();setProgress(`Scanning ${completed} / ${targets.length} · ${withData} actionable · ${failed} failed`);
     if(start+CONCURRENCY<targets.length)await new Promise(r=>setTimeout(r,120));
    }
