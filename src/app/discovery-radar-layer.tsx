@@ -12,12 +12,13 @@ type ExactResult={ok:boolean;market?:{merged?:{count?:number;median?:number|null
 type DiscoveryCard={id:string;player:string;year:string;setName:string;cardNumber:string;variation:string;median:number;low:number|null;high:number|null;compCount:number;agreement:string;catalyst:Article;signal:"DISCOVERY BUY WATCH"|"AVOID / NEGATIVE CATALYST";scannedAt:string};
 
 type Settings={minPrice:number;maxPrice:number;minComps:number;minCatalystImpact:number};
-const SCOUT_KEY="cardsignal-discovery-scouts",RESULT_KEY="cardsignal-discovery-results",SETTINGS_KEY="cardsignal-discovery-settings";
+const SCOUT_KEY="cardsignal-discovery-scouts",RESULT_KEY="cardsignal-discovery-results",SETTINGS_KEY="cardsignal-discovery-settings",CARD_KEY="cardsignal-added-cards",MAX_CARDS=500;
 const DEFAULTS:Settings={minPrice:40,maxPrice:200,minComps:3,minCatalystImpact:70};
 function readJson<T>(key:string,fallback:T):T{try{const v=JSON.parse(localStorage.getItem(key)||"");return(v??fallback)as T}catch{return fallback}}
 function money(v:number|null|undefined){return v==null?"—":`$${v.toLocaleString(undefined,{maximumFractionDigits:2})}`}
 function norm(v:string){return v.trim().toLowerCase()}
-function cardKey(i:Identity){return [i.playerName,i.year,i.setName,i.cardNumber,i.variation].map(x=>String(x||"").toLowerCase()).join("|")}
+function cardKey(i:Identity){return [i.playerName,i.year,i.setName,i.cardNumber,i.variation].map(x=>String(x||"").trim().toLowerCase()).join("|")}
+function savedCardKey(c:Record<string,unknown>){return [c.player,c.year,c.setName,c.cardNumber,c.variant].map(x=>String(x||"").trim().toLowerCase()).join("|")}
 
 export default function DiscoveryRadarLayer(){
  const[ready,setReady]=useState(false),[open,setOpen]=useState(false),[scouts,setScouts]=useState<Scout[]>([]),[results,setResults]=useState<DiscoveryCard[]>([]),[settings,setSettings]=useState<Settings>(DEFAULTS),[name,setName]=useState(""),[running,setRunning]=useState(false),[progress,setProgress]=useState(""),[error,setError]=useState("");
@@ -45,7 +46,7 @@ export default function DiscoveryRadarLayer(){
   return found;
  };
  const scanAll=async()=>{if(running)return;setRunning(true);setError("");const all:DiscoveryCard[]=[];for(let i=0;i<scouts.length;i++){setProgress(`${i+1} / ${scouts.length} · ${scouts[i].name}`);try{all.push(...await scanPlayer(scouts[i].name))}catch{} }const dedup=all.filter((x,i,a)=>i===a.findIndex(y=>y.id===x.id)).sort((a,b)=>b.catalyst.impact-a.catalyst.impact||b.compCount-a.compCount);setResults(dedup);localStorage.setItem(RESULT_KEY,JSON.stringify(dedup.slice(0,100)));dedup.slice(0,5).forEach(notify);setProgress(`Complete · ${dedup.length} buy-watch candidate${dedup.length===1?"":"s"}`);setRunning(false)};
- const addToWatchlist=(row:DiscoveryCard)=>{const cards=readJson<Array<Record<string,unknown>>>("cardsignal-added-cards",[]);if(cards.some(c=>norm(String(c.player||""))===norm(row.player)&&String(c.year||"")===row.year&&String(c.cardNumber||"")===row.cardNumber))return;const id=Date.now()+Math.floor(Math.random()*1000);const meta=[row.year,row.setName,row.cardNumber&&`#${row.cardNumber}`,row.variation].filter(Boolean).join(" · ");const card={id,player:row.player,meta,year:row.year,setName:row.setName,cardNumber:row.cardNumber,variant:row.variation,mode:"watching",marketValue:row.median,score:0,move:"DISCOVERY",tone:"hold",addedAt:new Date().toISOString(),discoverySource:{signal:row.signal,catalyst:row.catalyst,discoveredAt:row.scannedAt}};const next=[card,...cards].slice(0,100);localStorage.setItem("cardsignal-added-cards",JSON.stringify(next));window.dispatchEvent(new Event("cardsignal:user-cards-changed"))};
+ const addToWatchlist=(row:DiscoveryCard)=>{const cards=readJson<Array<Record<string,unknown>>>(CARD_KEY,[]);const candidateKey=[row.player,row.year,row.setName,row.cardNumber,row.variation].map(x=>String(x||"").trim().toLowerCase()).join("|");if(cards.some(c=>savedCardKey(c)===candidateKey))return;const id=Date.now()+Math.floor(Math.random()*1000);const meta=[row.year,row.setName,row.cardNumber&&`#${row.cardNumber}`,row.variation].filter(Boolean).join(" · ");const canonicalIdentity={playerName:row.player,year:row.year,setName:row.setName,cardNumber:row.cardNumber,variation:row.variation};const card={id,player:row.player,meta,year:row.year,setName:row.setName,cardNumber:row.cardNumber,variant:row.variation,mode:"watching",marketValue:row.median,score:0,move:"DISCOVERY",tone:"hold",addedAt:new Date().toISOString(),canonicalIdentity,discoverySource:{signal:row.signal,catalyst:row.catalyst,discoveredAt:row.scannedAt}};const next=[card,...cards].slice(0,MAX_CARDS);localStorage.setItem(CARD_KEY,JSON.stringify(next));window.dispatchEvent(new Event("cardsignal:user-cards-changed"))};
  const filtered=useMemo(()=>results.filter(r=>r.median>=settings.minPrice&&r.median<=settings.maxPrice),[results,settings]);
  if(!ready)return null;
  return createPortal(<>
