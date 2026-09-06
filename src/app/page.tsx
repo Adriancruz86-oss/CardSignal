@@ -1,57 +1,82 @@
 "use client";
 
-import {useState} from "react";
-
-const buyRows=[
- {name:"Jackson Holliday",initials:"JH",meta:"2024 Topps Chrome · PSA 10",score:86,move:"+12.4%",tone:"buy"},
- {name:"Paul Skenes",initials:"PS",meta:"2024 Bowman Chrome · PSA 10",score:79,move:"+8.1%",tone:"buy"},
-];
-const sellRows=[{name:"Anthony Richardson",initials:"AR",meta:"2023 Prizm Rookie · PSA 10",score:81,move:"-14.2%",tone:"sell"}];
-const watchRows=[{name:"Shohei Ohtani",initials:"SO",meta:"2018 Topps Chrome · PSA 10",score:61,move:"+2.1%",tone:"hold"}];
-
-function SignalRow({name,initials,meta,score,move,tone}:{name:string;initials:string;meta:string;score:number;move:string;tone:string}){
- return <div className="signal-row"><div className={`mini-card mini-${tone}`}><span>{initials}</span><i/></div><div className="signal-copy"><strong>{name}</strong><span>{meta}</span></div><div className={`score-pill ${tone}`}><b>{score}</b><small>{move}</small></div></div>
+function StatCard({icon,label,tone}:{icon:string;label:string;tone?:"buy"|"sell"}){
+ return <article className={`stat-card ${tone?`${tone}-edge`:""}`}>
+  <div className={`stat-icon ${tone||"cyan"}`}>{icon}</div>
+  <div className="stat-copy"><span>{label}</span><strong>—</strong><small>Waiting for portfolio data</small></div>
+ </article>;
 }
-function StatCard({icon,label,value,suffix,note,tone}:{icon:string;label:string;value:string;suffix?:string;note:string;tone?:string}){
- return <article className={`stat-card ${tone?`${tone}-edge`:""}`}><div className={`stat-icon ${tone??"cyan"}`}>{icon}</div><div className="stat-copy"><span>{label}</span><strong>{value} {suffix&&<b>{suffix}</b>}</strong><small className={tone==="buy"?"positive":tone==="sell"?"negative":""}>{note}</small></div></article>
+
+function EmptySignalRow(){
+ return <div className="radar-empty">No evidence-backed signals yet</div>;
 }
 
 export default function Home(){
- const[analyzing,setAnalyzing]=useState(false),[updated,setUpdated]=useState("2 min ago");
- const analyze=()=>{setAnalyzing(true);window.setTimeout(()=>{setAnalyzing(false);setUpdated("just now")},900)};
+ const openPulse=()=>document.querySelector<HTMLButtonElement>(".cs-pulse-launch")?.click();
  return <main className="app-shell v2-shell">
-  <div className="ambient-grid"/><div className="background-radar"/><div className="background-trend"/>
+  <div className="ambient-grid" />
+  <div className="background-radar" />
+  <div className="background-trend" />
+
   <header className="topbar v2-topbar">
    <div className="brand-lockup v2-brand"><div className="brand-fallback"><b>Card</b><em>Signal</em></div></div>
-   <nav className="nav-tabs"><button className="active">Dashboard</button><button>Buy Radar</button><button>Sell Radar</button><button>Watchlist</button><button>Portfolio</button><button>Alerts</button></nav>
+   <nav className="nav-tabs" aria-label="Primary navigation">
+    <button className="active">Dashboard</button><button>Buy Radar</button><button>Sell Radar</button><button>Watchlist</button><button>Portfolio</button><button>Alerts</button>
+   </nav>
    <button className="add-card"><span>＋</span> Add Card</button>
   </header>
 
   <section className="dashboard-wrap v2-wrap">
-   <div className="eyebrow-row"><div><span className="eyebrow">MARKET INTELLIGENCE</span><h1>Know what changed <em>before you react.</em></h1><p className="hero-subcopy">Exact-card market evidence, leading signals, catalysts, and validation in one place.</p></div><div className="scan-status"><i/> Portfolio intelligence <strong>READY</strong></div></div>
-   <section className="stat-grid"><StatCard icon="$" label="PORTFOLIO VALUE" value="$3,482" note="Based on saved card values" tone="buy"/><StatCard icon="◎" label="WATCHING" value="14" suffix="cards" note="Monitored outside portfolio"/><StatCard icon="↗" label="BUY MORE" value="3" suffix="active" note="Evidence-backed signals" tone="buy"/><StatCard icon="!" label="SELL RISK" value="2" suffix="active" note="Needs review" tone="sell"/></section>
+   <div className="eyebrow-row">
+    <div><span className="eyebrow">MARKET INTELLIGENCE</span><h1>Your collection. <em>Evidence first.</em></h1><p className="hero-subcopy">Track exact cards, collect repeatable market evidence, and surface signals only when the data supports them.</p></div>
+    <div className="scan-status"><i /> Market scans run when you request them</div>
+   </div>
 
-   <section className="hero-grid v2-hero-grid">
-    <article className="panel top-signal v2-top-signal"><div className="panel-accent"/><div className="panel-heading"><div><span className="kicker green">TOP SIGNAL</span><h2>Jackson Holliday</h2><p>2024 Topps Chrome · #172 · Refractor · PSA 10</p></div><span className="live-dot"><i/> LIVE SIGNAL</span></div>
-     <div className="top-signal-content"><div className="card-stage v2-card-stage"><div className="scan-corner tl"/><div className="scan-corner tr"/><div className="scan-corner bl"/><div className="scan-corner br"/><div className="card-glow"/><div className="card-silhouette v2-card-silhouette"><div className="card-grade"><span>PSA</span><b>10</b></div><div className="player-mark"><span>JH</span><i/></div><div className="card-caption"><span>TOPPS CHROME</span><small>ROOKIE REFRACTOR</small></div></div></div>
-      <div className="signal-primary v2-signal-primary"><span className="label">MOMENTUM SCORE</span><div className="score-lockup"><div className="massive-score">86</div><span className="score-arrow">↗</span></div><div className="recommendation"><span>▲</span> BUY / WATCH <small>HIGH CONFIDENCE</small></div><div className="decision-strip"><div><span>PRICE TREND</span><strong className="positive">+11</strong><small>since scan</small></div><div><span>SALES VELOCITY</span><strong className="positive">+18</strong><small>accelerating</small></div><div><span>SUPPLY</span><strong className="positive">TIGHT</strong><small>inventory falling</small></div></div><p>CardSignal will replace this starter state with saved portfolio evidence as cards are scanned.</p><div className="price-line"><span>EST. MARKET</span><strong>$124.18</strong><small>+$13.84 / 7D</small></div><button onClick={analyze} className={`analyze-button ${analyzing?"loading":""}`}><span>{analyzing?"SCANNING MARKET…":"ANALYZE NOW"}</span></button><small className="updated">Last analyzed {updated}</small></div>
-     </div>
-    </article>
-    <article className="panel breakdown v2-breakdown"><div className="panel-heading compact"><div><span className="kicker cyan">SIGNAL BREAKDOWN</span><h3>Why it&apos;s moving</h3></div><span className="confidence">HIGH CONFIDENCE</span></div>{[["Price momentum",88,"+11"],["Sales velocity",82,"+18"],["Supply pressure",74,"+7"],["Market evidence",91,"+22"]].map(([label,value,change])=><div className="metric" key={String(label)}><div className="metric-label"><span>{label}</span><b>{value}</b></div><div className="metric-track"><i style={{width:`${value}%`}}/></div><small>{change} since previous scan</small></div>)}<div className="insight-box"><span>MARKET EVIDENCE</span><p>Leading inputs stay visually separate from lagging price confirmation and historical validation.</p></div></article>
+   <section className="stat-grid">
+    <StatCard icon="$" label="PORTFOLIO VALUE" tone="buy" />
+    <StatCard icon="◎" label="WATCHING" />
+    <StatCard icon="↗" label="BUY MORE" tone="buy" />
+    <StatCard icon="!" label="SELL RISK" tone="sell" />
    </section>
 
-   <section className="triple-grid"><article className="panel radar-panel"><div className="section-title"><span className="green">▲</span><div><b>BUY RADAR</b><small>Positive momentum</small></div><button>VIEW ALL</button></div>{buyRows.map(item=><SignalRow key={item.name} {...item}/>)}</article><article className="panel radar-panel"><div className="section-title"><span className="red">▼</span><div><b>SELL RADAR</b><small>Weakening demand</small></div><button>VIEW ALL</button></div>{sellRows.map(item=><SignalRow key={item.name} {...item}/>)}</article><article className="panel radar-panel"><div className="section-title"><span className="cyan">◎</span><div><b>WATCHLIST</b><small>Your monitored cards</small></div><button>VIEW ALL</button></div>{watchRows.map(item=><SignalRow key={item.name} {...item}/>)}</article></section>
+   <section className="hero-grid v2-hero-grid">
+    <article className="panel top-signal v2-top-signal">
+     <div className="panel-accent" />
+     <div className="panel-heading"><div><span className="kicker green">TOP SIGNAL</span><h2>Add your first card</h2><p>Your strongest evidence-backed portfolio signal will appear here.</p></div><span className="live-dot"><i /> NO SCAN</span></div>
+     <div className="top-signal-content">
+      <div className="card-stage v2-card-stage">
+       <div className="card-glow" />
+       <div className="card-silhouette v2-card-silhouette"><div className="card-grade"><span>RAW</span><b /></div><div className="player-mark"><span>CS</span><i /></div><div className="card-caption"><span>CATALOG CARD</span><small>NO CARD SELECTED</small></div></div>
+      </div>
+      <div className="signal-primary v2-signal-primary">
+       <span className="label">CARDSIGNAL SCORE</span><div className="score-lockup"><div className="massive-score">—</div><span className="score-arrow">→</span></div>
+       <div className="recommendation"><span>◎</span> NEEDS DATA <small>LOW CONFIDENCE</small></div>
+       <div className="decision-strip"><div><span>PRICE TREND</span><strong>—</strong><small>not established</small></div><div><span>SALES VELOCITY</span><strong>—</strong><small>not established</small></div><div><span>EVIDENCE</span><strong>—</strong><small>no scan</small></div></div>
+       <p>Add cards, then run Portfolio Pulse. CardSignal will only surface signals backed by accepted market matches.</p>
+       <div className="price-line"><span>CURRENT MEDIAN</span><strong>—</strong><small>trend not established</small></div>
+       <button onClick={openPulse} className="analyze-button"><span>RUN PORTFOLIO PULSE</span></button><small className="updated">Not scanned yet</small>
+      </div>
+     </div>
+    </article>
 
-   <section className="bottom-grid"><article className="panel trend-panel"><div className="section-title"><span className="cyan">⌁</span><div><b>PORTFOLIO TREND</b><small>Historical snapshots only</small></div><button>90D</button></div><div className="chart-area"><div className="cs-chart-placeholder"><b>Repeated scans build this chart.</b><span>No synthetic history is drawn.</span></div></div></article><article className="panel alerts-panel"><div className="section-title"><span className="cyan">◉</span><div><b>RECENT ALERTS</b><small>What changed</small></div></div><div className="alert buy"><i>▲</i><div><b>Momentum signal</b><p>New positive evidence stack detected.</p><small>recent</small></div></div><div className="alert sell"><i>▼</i><div><b>Risk signal</b><p>Negative evidence needs review.</p><small>recent</small></div></div></article><article className="panel snapshot-panel"><div className="section-title"><span className="cyan">⌖</span><div><b>MARKET SNAPSHOT</b><small>Across tracked cards</small></div></div><div className="snapshot-ring"><div><strong>68</strong><span>MARKET HEAT</span></div></div><div className="snapshot-stats"><p><span>Rising</span><b className="positive">8</b></p><p><span>Stable</span><b>4</b></p><p><span>Falling</span><b className="negative">2</b></p></div></article></section>
+    <article className="panel breakdown v2-breakdown">
+     <div className="panel-heading compact"><div><span className="kicker cyan">SIGNAL BREAKDOWN</span><h3>Why the signal exists</h3></div><span className="confidence">NO SCAN</span></div>
+     {["7D price move","Sales velocity","Market-match evidence","Signal confidence"].map(label=><div className="metric" key={label}><div className="metric-label"><span>{label}</span><b>0</b></div><div className="metric-track"><i style={{width:"0%"}} /></div><small>No evidence yet</small></div>)}
+     <div className="insight-box"><span>MARKET EVIDENCE</span><p>Run Portfolio Pulse to populate this panel with exact-card market evidence.</p></div>
+    </article>
+   </section>
+
+   <section className="triple-grid">
+    <article className="panel radar-panel"><div className="section-title"><span className="green">▲</span><div><b>BUY RADAR</b><small>Evidence-backed upside</small></div><button>VIEW ALL</button></div><EmptySignalRow /></article>
+    <article className="panel radar-panel"><div className="section-title"><span className="red">▼</span><div><b>SELL RADAR</b><small>Evidence-backed risk</small></div><button>VIEW ALL</button></div><EmptySignalRow /></article>
+    <article className="panel radar-panel"><div className="section-title"><span className="cyan">◎</span><div><b>WATCHLIST</b><small>Your monitored cards</small></div><button>VIEW ALL</button></div><div className="radar-empty">Your watchlist is empty</div></article>
+   </section>
+
+   <section className="bottom-grid">
+    <article className="panel trend-panel"><div className="section-title"><span className="cyan">⌁</span><div><b>PORTFOLIO TREND</b><small>Historical snapshots only</small></div></div><div className="chart-area"><div className="cs-trend-empty"><b>Trend history starts after repeated scans</b><span>No synthetic chart points are shown.</span></div></div></article>
+    <article className="panel alerts-panel"><div className="section-title"><span className="cyan">◉</span><div><b>RECENT ALERTS</b><small>Material changes only</small></div></div><div className="radar-empty">No material alerts yet</div></article>
+    <article className="panel snapshot-panel"><div className="section-title"><span className="cyan">⌖</span><div><b>MARKET SNAPSHOT</b><small>Across tracked cards</small></div></div><div className="snapshot-ring"><div><strong>—</strong><span>MARKET HEAT</span></div></div><div className="snapshot-stats"><p><span>Rising</span><b>0</b></p><p><span>Stable</span><b>0</b></p><p><span>Falling</span><b>0</b></p></div><div className="market-note"><span>◎</span><p><b>Waiting for evidence</b><br/>Run scans to build a truthful market snapshot.</p></div></article>
+   </section>
   </section>
-
-  <style jsx global>{`
-   .v2-shell{background:#04101a!important}.v2-shell::before{background:radial-gradient(circle at 8% 18%,rgba(34,255,146,.08),transparent 23%),radial-gradient(circle at 90% 25%,rgba(0,181,255,.08),transparent 26%),linear-gradient(180deg,rgba(2,10,17,.2),rgba(2,10,17,.82))!important;z-index:0}.background-trend{position:fixed;right:-80px;bottom:40px;width:620px;height:260px;opacity:.08;pointer-events:none;z-index:0;background:linear-gradient(135deg,transparent 0 22%,rgba(42,231,147,.7) 22.3% 22.8%,transparent 23.2% 39%,rgba(51,196,255,.75) 39.3% 39.8%,transparent 40.2% 56%,rgba(43,240,150,.8) 56.3% 56.8%,transparent 57.2%)}
-   .v2-topbar{min-height:88px;padding:10px 42px;grid-template-columns:300px 1fr auto;background:rgba(2,11,19,.95)!important;border-bottom:1px solid rgba(90,204,248,.13)}.v2-brand{height:68px}.brand-fallback{font-size:28px;font-style:italic;letter-spacing:-.05em;white-space:nowrap;color:#edf8ff;font-weight:900}.brand-fallback em{font-style:italic;color:#47ef9a;margin-left:2px}.v2-wrap{width:min(1680px,calc(100% - 64px))!important;padding-top:34px}.hero-subcopy{margin:8px 0 0;color:#6e8da0;font-size:13px}
-   .stat-grid{gap:16px}.stat-card{display:flex;align-items:center;gap:15px;min-height:112px;padding:17px 20px;background:linear-gradient(145deg,rgba(7,25,40,.97),rgba(3,14,24,.96))!important;border-color:rgba(91,193,235,.16)!important}.stat-icon{width:45px;height:45px;display:grid;place-items:center;border-radius:12px;font-size:19px;font-weight:900;color:#65ddff;border:1px solid rgba(85,210,255,.2);background:radial-gradient(circle,rgba(52,179,229,.16),rgba(11,34,51,.55))}.stat-icon.buy{color:#58f3a2;border-color:rgba(74,239,158,.24)}.stat-icon.sell{color:#ff6e7c;border-color:rgba(255,93,111,.24)}.stat-copy>span{display:block;color:#7798ac;font-size:10px;font-weight:900;letter-spacing:.15em}.stat-copy>strong{display:block;margin:7px 0;font-size:28px}.stat-copy>small{color:#718d9e;font-size:10px}
-   .panel{background:linear-gradient(155deg,rgba(7,25,40,.97),rgba(3,14,24,.97))!important;border-color:rgba(92,191,231,.16)!important;box-shadow:0 22px 55px rgba(0,0,0,.28),inset 0 1px 0 rgba(255,255,255,.025)!important}.v2-hero-grid{grid-template-columns:minmax(0,1.75fr) minmax(360px,.72fr)!important;gap:18px!important}.v2-top-signal,.v2-breakdown{min-height:455px!important;padding:25px!important}.panel-accent{position:absolute;left:0;top:0;width:180px;height:2px;background:linear-gradient(90deg,#45f39c,transparent)}.live-dot{display:inline-flex;align-items:center;gap:6px}.live-dot i{width:6px;height:6px;border-radius:50%;background:#52f49e;box-shadow:0 0 10px #52f49e}.top-signal-content{grid-template-columns:.8fr 1.2fr!important;gap:28px!important}.v2-card-stage{min-height:330px!important;background:radial-gradient(circle at 50% 46%,rgba(44,202,255,.1),transparent 51%)!important}.scan-corner{position:absolute;width:34px;height:34px;opacity:.5;z-index:3}.scan-corner.tl{left:30px;top:30px;border-left:1px solid #48d8ff;border-top:1px solid #48d8ff}.scan-corner.tr{right:30px;top:30px;border-right:1px solid #48d8ff;border-top:1px solid #48d8ff}.scan-corner.bl{left:30px;bottom:30px;border-left:1px solid #48d8ff;border-bottom:1px solid #48d8ff}.scan-corner.br{right:30px;bottom:30px;border-right:1px solid #48d8ff;border-bottom:1px solid #48d8ff}.card-glow{position:absolute;width:210px;height:280px;border-radius:30px;background:rgba(57,218,255,.05);filter:blur(28px)}.v2-card-silhouette{width:182px!important}.score-lockup{display:flex;align-items:center;gap:16px}.score-arrow{font-size:44px;color:#45f39c}.massive-score{font-size:82px!important}.recommendation small{margin-left:8px;padding-left:9px;border-left:1px solid rgba(82,241,163,.22);color:#93b7a4;font-size:8px}.decision-strip{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin:12px 0 14px}.decision-strip>div{padding:10px;border:1px solid rgba(87,197,230,.12);border-radius:9px;background:rgba(7,27,41,.6)}.decision-strip span{display:block;color:#68899b;font-size:7px;font-weight:900}.decision-strip strong{display:block;margin-top:5px;font-size:14px}.decision-strip small{display:block;color:#5f7d8e;font-size:7px}
-   .triple-grid,.bottom-grid{gap:18px!important}.radar-panel{padding:20px!important}.mini-card{position:relative!important;width:38px!important;height:51px!important;border-radius:6px!important;display:flex!important;align-items:center!important;justify-content:center!important}.mini-card i{position:absolute;bottom:5px;left:7px;right:7px;height:2px;background:#4bd8ff}.mini-buy i{background:#49f19b}.mini-sell i{background:#ff6072}.signal-row{grid-template-columns:48px 1fr auto!important;padding:13px 2px!important}.score-pill{min-width:58px}.chart-area{display:grid;place-items:center;min-height:220px}.cs-chart-placeholder{text-align:center;color:#6f8c9b}.cs-chart-placeholder b,.cs-chart-placeholder span{display:block}.cs-chart-placeholder b{color:#a6c0cb}.cs-chart-placeholder span{margin-top:6px;font-size:10px}.alert i{border:1px solid currentColor;background:transparent!important}.snapshot-ring{background:conic-gradient(#4ff0a2 0 68%,rgba(74,207,246,.12) 68% 100%)!important}
-   @media(max-width:1150px){.v2-topbar{grid-template-columns:240px 1fr auto;padding-inline:20px}.v2-wrap{width:min(100% - 28px,1680px)!important}.v2-hero-grid{grid-template-columns:1fr!important}.stat-grid{grid-template-columns:repeat(2,1fr)!important}}@media(max-width:760px){.v2-topbar{grid-template-columns:1fr auto}.nav-tabs{display:none}.v2-wrap{width:calc(100% - 20px)!important}.stat-grid,.triple-grid,.bottom-grid{grid-template-columns:1fr!important}.eyebrow-row{align-items:flex-start!important;flex-direction:column}.top-signal-content{grid-template-columns:1fr!important}.scan-status{display:none}.v2-top-signal,.v2-breakdown{padding:18px!important}}
-  `}</style>
- </main>
+ </main>;
 }
