@@ -3,7 +3,6 @@ import { Geist, Geist_Mono } from "next/font/google";
 import FunctionalLayer from "./functional-layer";
 import CardDetailLayer from "./card-detail-layer";
 import UserCardLayer from "./user-card-layer";
-import AddCardIdentityLayer from "./add-card-identity-layer";
 import LiveMarketLayer from "./live-market-layer";
 import ValuationBridge from "./valuation-bridge";
 import ValuationOverride from "./valuation-override";
@@ -74,7 +73,6 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
         <FunctionalLayer />
         <CardDetailLayer />
         <UserCardLayer />
-        <AddCardIdentityLayer />
         <PortfolioLeagueFilterLayer />
         <LiveMarketLayer />
         <ValuationBridge />
