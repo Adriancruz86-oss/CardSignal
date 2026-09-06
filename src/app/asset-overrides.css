@@ -1,205 +1,160 @@
-/* CardSignal individual asset integration.
-   Production UI now references standalone crops under public/assets/cropped.
-   The original generated source sheets remain in the repo but are never rendered
-   as wallpapers or CSS sprites. */
+/* CSS-only visual polish. No generated clip art, image sprites, or decorative assets. */
 
 .v2-shell,
 .app-shell {
   background:
-    radial-gradient(circle at 10% 18%, rgba(45, 242, 151, .08), transparent 25%),
-    radial-gradient(circle at 88% 24%, rgba(49, 191, 255, .08), transparent 28%),
+    radial-gradient(circle at 10% 18%, rgba(45, 242, 151, .07), transparent 25%),
+    radial-gradient(circle at 88% 24%, rgba(49, 191, 255, .07), transparent 28%),
     linear-gradient(180deg, #04101a 0%, #06131f 50%, #04101a 100%) !important;
 }
 
-/* Standalone radar crop — safe because no neighboring sheet artwork can bleed in. */
-.background-radar {
-  left: -115px !important;
-  top: 300px !important;
-  width: 360px !important;
-  height: 360px !important;
-  border: 0 !important;
-  border-radius: 50% !important;
-  background: url('/assets/cropped/radar/radar-main-hud.png') center / contain no-repeat !important;
-  opacity: .11 !important;
-  box-shadow: none !important;
-  filter: saturate(1.08) drop-shadow(0 0 26px rgba(49, 239, 151, .18)) !important;
-}
-.background-radar::before,
-.background-radar::after { display: none !important; }
-
-/* Brand crop replaces both the missing old logo file and the temporary text mark. */
+/* Brand is text-only so it remains crisp and dependency-free. */
 .v2-brand {
   position: relative !important;
   overflow: visible !important;
   width: 300px !important;
   height: 76px !important;
+  display:flex !important;
+  align-items:center !important;
 }
 .brand-logo-original { display: none !important; }
 .brand-fallback {
-  position: absolute !important;
-  inset: 0 !important;
-  width: 285px !important;
-  height: 76px !important;
-  font-size: 0 !important;
-  background: url('/assets/cropped/brand/cardsignal-logo-kit.png') left center / contain no-repeat !important;
-  filter: drop-shadow(0 0 14px rgba(55, 242, 154, .18)) !important;
+  position: static !important;
+  display:flex !important;
+  align-items:baseline !important;
+  width:auto !important;
+  height:auto !important;
+  font-size:28px !important;
+  letter-spacing:-.05em !important;
+  font-style:italic !important;
+  font-weight:900 !important;
+  color:#eef8ff !important;
+  background:none !important;
+  filter:none !important;
 }
+.brand-fallback b{font-weight:900}.brand-fallback em{font-style:italic;color:#47ef9a;margin-left:2px}
 
-/* Standalone HUD/action crops for top metric cards. */
+/* Ambient radar is pure CSS. */
+.background-radar {
+  left: -115px !important;
+  top: 300px !important;
+  width: 360px !important;
+  height: 360px !important;
+  border: 1px solid rgba(66, 236, 163, .08) !important;
+  border-radius: 50% !important;
+  background:
+    radial-gradient(circle, transparent 0 23%, rgba(81,214,255,.08) 23.5% 24%, transparent 24.5% 46%, rgba(77,239,164,.07) 46.5% 47%, transparent 47.5%),
+    conic-gradient(from 25deg, transparent 0 11%, rgba(75,221,255,.09) 11.3% 11.8%, transparent 12.1% 37%, rgba(74,238,158,.08) 37.3% 37.8%, transparent 38.1% 100%) !important;
+  opacity: .45 !important;
+  box-shadow:0 0 60px rgba(49,239,151,.04) !important;
+  filter:none !important;
+}
+.background-radar::before,
+.background-radar::after { display: block !important; }
+
+/* Compact metric glyphs use native text symbols only. */
 .stat-icon {
   position: relative !important;
   overflow: hidden !important;
-  color: transparent !important;
-  background-color: rgba(4, 18, 29, .9) !important;
-  background-repeat: no-repeat !important;
-  background-position: center !important;
-  background-size: 68% auto !important;
+  color: inherit !important;
+  background: radial-gradient(circle,rgba(52,179,229,.14),rgba(11,34,51,.55)) !important;
   border-color: rgba(81, 205, 244, .15) !important;
 }
 .stat-icon::before { display: none !important; }
-.stat-card:nth-child(1) .stat-icon { background-image: url('/assets/cropped/icons/action-trend.png') !important; }
-.stat-card:nth-child(2) .stat-icon { background-image: url('/assets/cropped/icons/action-search.png') !important; }
-.stat-card:nth-child(3) .stat-icon { background-image: url('/assets/cropped/icons/icon-up-round.png') !important; background-size: 82% auto !important; }
-.stat-card:nth-child(4) .stat-icon { background-image: url('/assets/cropped/icons/icon-warning-round.png') !important; background-size: 82% auto !important; }
+.stat-card:nth-child(1) .stat-icon,
+.stat-card:nth-child(2) .stat-icon,
+.stat-card:nth-child(3) .stat-icon,
+.stat-card:nth-child(4) .stat-icon { background-image:none !important; }
 
-/* Hero card gets a real isolated slab/frame crop with a separate scan overlay. */
-.v2-card-stage {
-  isolation: isolate !important;
-}
+/* Hero card framing is CSS only. */
+.v2-card-stage { isolation:isolate !important; }
 .v2-card-stage::before {
-  content: '' !important;
-  position: absolute !important;
-  width: 292px !important;
-  height: 350px !important;
-  border: 0 !important;
-  border-radius: 0 !important;
-  background: url('/assets/cropped/scan/scan-card-frame.png') center / contain no-repeat !important;
-  opacity: .34 !important;
-  filter: saturate(1.08) drop-shadow(0 0 20px rgba(58, 210, 255, .15)) !important;
-  pointer-events: none !important;
-  z-index: 1 !important;
+  content:'' !important;
+  position:absolute !important;
+  width:278px !important;
+  height:328px !important;
+  border:1px solid rgba(76,218,255,.14) !important;
+  border-radius:24px !important;
+  background:
+    linear-gradient(90deg,transparent 49.7%,rgba(74,218,255,.08) 50%,transparent 50.3%),
+    linear-gradient(transparent 49.7%,rgba(74,218,255,.08) 50%,transparent 50.3%) !important;
+  box-shadow:0 0 40px rgba(58,210,255,.07) !important;
+  pointer-events:none !important;
+  z-index:1 !important;
 }
 .v2-card-stage::after {
-  content: '' !important;
-  position: absolute !important;
-  width: 250px !important;
-  height: 335px !important;
-  background: url('/assets/cropped/cards/slab-frame-large.png') center / contain no-repeat !important;
-  opacity: .40 !important;
-  pointer-events: none !important;
-  z-index: 2 !important;
+  content:'' !important;
+  position:absolute !important;
+  width:230px !important;
+  height:305px !important;
+  border:1px solid rgba(219,240,248,.15) !important;
+  border-radius:18px !important;
+  background:linear-gradient(160deg,rgba(255,255,255,.035),rgba(255,255,255,0)) !important;
+  opacity:1 !important;
+  pointer-events:none !important;
+  z-index:2 !important;
 }
 .v2-card-silhouette {
-  z-index: 3 !important;
-  border: 2px solid rgba(225, 241, 247, .82) !important;
-  background: linear-gradient(160deg, #dbe8ed, #7b909c 12%, #0c1720 15%, #15354a 74%, #08141e) !important;
-  box-shadow: 0 24px 44px rgba(0,0,0,.48), 0 0 34px rgba(63,218,255,.14) !important;
+  z-index:3 !important;
+  border:2px solid rgba(225,241,247,.72) !important;
+  background:linear-gradient(160deg,#dbe8ed,#7b909c 12%,#0c1720 15%,#15354a 74%,#08141e) !important;
+  box-shadow:0 24px 44px rgba(0,0,0,.48),0 0 34px rgba(63,218,255,.11) !important;
 }
-.v2-card-silhouette::before { display: none !important; }
-.scan-corner { display: none !important; }
+.v2-card-silhouette::before { display:none !important; }
 
-/* Buy / Sell / Watchlist now use individual round signal icons. */
+/* Radar panels use simple CSS signal badges. */
 .radar-panel .section-title > span {
-  flex: 0 0 34px !important;
-  width: 34px !important;
-  height: 34px !important;
-  font-size: 0 !important;
-  background-position: center !important;
-  background-repeat: no-repeat !important;
-  background-size: contain !important;
-  filter: drop-shadow(0 0 8px rgba(49, 220, 255, .14)) !important;
+  flex:0 0 34px !important;
+  width:34px !important;
+  height:34px !important;
+  display:grid !important;
+  place-items:center !important;
+  border:1px solid currentColor !important;
+  border-radius:50% !important;
+  background:rgba(7,25,39,.72) !important;
+  font-size:15px !important;
+  opacity:.9 !important;
+  filter:none !important;
 }
-.triple-grid .radar-panel:nth-child(1) .section-title > span { background-image: url('/assets/cropped/icons/icon-up-round.png') !important; }
-.triple-grid .radar-panel:nth-child(2) .section-title > span { background-image: url('/assets/cropped/icons/icon-down-round.png') !important; }
-.triple-grid .radar-panel:nth-child(3) .section-title > span { background-image: url('/assets/cropped/icons/icon-hold-round.png') !important; }
 
-/* Mini card texture uses a standalone crop rather than a position inside a sheet. */
 .mini-card {
-  background-image: url('/assets/cropped/cards/card-stack-hud.png') !important;
-  background-repeat: no-repeat !important;
-  background-position: center !important;
-  background-size: cover !important;
-  border-color: rgba(88, 214, 249, .24) !important;
-  box-shadow: 0 5px 14px rgba(0,0,0,.25), inset 0 0 0 1px rgba(255,255,255,.035) !important;
+  background:linear-gradient(145deg,#203b4e,#0b1721) !important;
+  border-color:rgba(88,214,249,.24) !important;
+  box-shadow:0 5px 14px rgba(0,0,0,.25),inset 0 0 0 1px rgba(255,255,255,.035) !important;
 }
-.mini-card::before { background: rgba(2, 13, 21, .26) !important; }
-.mini-card span { position: relative; z-index: 2; text-shadow: 0 1px 8px #00131e; }
+.mini-card::before { background:radial-gradient(circle at 50% 35%,rgba(85,215,255,.14),rgba(9,27,39,.22)) !important; }
+.mini-card span { position:relative;z-index:2;text-shadow:0 1px 8px #00131e; }
 
-/* Alert icons use dedicated individual crops. */
 .alert i {
-  width: 34px !important;
-  height: 34px !important;
-  flex: 0 0 34px !important;
-  font-size: 0 !important;
-  border: 0 !important;
-  border-radius: 50% !important;
-  background-position: center !important;
-  background-repeat: no-repeat !important;
-  background-size: contain !important;
+  width:30px !important;
+  height:30px !important;
+  flex:0 0 30px !important;
+  display:grid !important;
+  place-items:center !important;
+  border:1px solid currentColor !important;
+  border-radius:8px !important;
+  font-size:10px !important;
+  background-image:none !important;
 }
-.alert.buy i { background-image: url('/assets/cropped/icons/icon-up-round.png') !important; }
-.alert.sell i { background-image: url('/assets/cropped/icons/icon-warning-round.png') !important; }
-.alert.info i { background-image: url('/assets/cropped/icons/icon-info-round.png') !important; }
 
-/* Market Heat uses an isolated radar crop. */
 .snapshot-ring {
-  border: 0 !important;
-  background: url('/assets/cropped/radar/radar-green.png') center / contain no-repeat !important;
-  box-shadow: none !important;
-  filter: drop-shadow(0 0 14px rgba(50, 213, 255, .13)) !important;
+  border:1px solid rgba(91,230,164,.16) !important;
+  background:conic-gradient(#4ff0a2 0 68%,rgba(74,207,246,.12) 68% 100%) !important;
+  box-shadow:0 0 28px rgba(62,235,160,.08) !important;
+  filter:none !important;
 }
-.snapshot-ring::before { display: none !important; }
-.snapshot-ring > div {
-  background: rgba(2, 14, 23, .70) !important;
-  border-radius: 50% !important;
-  padding: 13px !important;
-  backdrop-filter: blur(3px) !important;
-}
+.snapshot-ring::before { display:none !important; }
+.snapshot-ring > div { background:transparent !important; padding:0 !important; backdrop-filter:none !important; }
 
-/* Decorative panel accents also come from isolated status-bar crops. */
+/* Remove first-generation decorative image remnants from rendered UI. */
+img[src^="/assets/"] { display:none !important; }
 .v2-top-signal::after,
 .v2-breakdown::after,
-.radar-panel::after {
-  content: '' !important;
-  position: absolute !important;
-  pointer-events: none !important;
-  display: block !important;
-  background-repeat: no-repeat !important;
-  background-position: center !important;
-  background-size: contain !important;
-}
-.v2-top-signal::after {
-  right: 18px !important;
-  top: 12px !important;
-  width: 110px !important;
-  height: 22px !important;
-  opacity: .18 !important;
-  background-image: url('/assets/cropped/panels/status-bar-green.png') !important;
-}
-.v2-breakdown { position: relative !important; }
-.v2-breakdown::after {
-  right: 18px !important;
-  bottom: 12px !important;
-  width: 100px !important;
-  height: 22px !important;
-  opacity: .12 !important;
-  background-image: url('/assets/cropped/panels/status-bar-blue.png') !important;
-}
-.radar-panel { position: relative !important; }
-.radar-panel::after {
-  right: 12px !important;
-  bottom: 8px !important;
-  width: 70px !important;
-  height: 15px !important;
-  opacity: .09 !important;
-  background-image: url('/assets/cropped/panels/status-bar-blue.png') !important;
-}
-.triple-grid .radar-panel:nth-child(1)::after { background-image: url('/assets/cropped/panels/status-bar-green.png') !important; }
-.triple-grid .radar-panel:nth-child(2)::after { background-image: url('/assets/cropped/panels/status-bar-red.png') !important; }
+.radar-panel::after { display:none !important;content:none !important;background:none !important; }
 
-@media (max-width: 760px) {
-  .brand-fallback { width: 225px !important; height: 64px !important; }
-  .background-radar { opacity: .07 !important; }
-  .v2-card-stage::before { opacity: .24 !important; }
-  .v2-card-stage::after { opacity: .30 !important; }
+@media (max-width:760px) {
+  .brand-fallback { font-size:24px !important; }
+  .background-radar { opacity:.25 !important; }
+  .v2-card-stage::before { opacity:.7 !important; }
+  .v2-card-stage::after { opacity:.7 !important; }
 }
