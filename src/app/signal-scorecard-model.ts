@@ -1,6 +1,6 @@
 import {getCardLeague,type LeagueCard} from "./card-league";
 import {getCardMarketContext,type MarketContextCard} from "./card-market-context";
-import {latestPerformance,performanceSignal,type PlayerPerformanceSnapshot} from "./player-performance-model";
+import {latestPerformance,performanceSignal,type PerformanceLeague,type PlayerPerformanceSnapshot} from "./player-performance-model";
 
 export type SignalType="EARLY EDGE"|"CONFIRMING"|"RISK STACK";
 export type SignalDirection="UP"|"DOWN";
@@ -24,13 +24,14 @@ function ageHours(v?:string){const t=ms(v);return t?Math.max(0,Date.now()-t)/360
 function latestTwo<T extends{scannedAt:string}>(rows:T[]){return [...rows].sort((a,b)=>ms(b.scannedAt)-ms(a.scannedAt)).slice(0,2)}
 function topCatalyst(cache:ScorecardCatalystCache,player:string){return (cache[norm(player)]?.articles||[]).filter(a=>ageHours(a.publishedAt)<=168).sort((a,b)=>b.impact-a.impact)[0]||null}
 function pct(from:number,to:number){return from>0?(to-from)/from*100:null}
+function performanceLeagueFor(card:ScorecardCard){const l=getCardLeague(card as LeagueCard);return ["MLB","NBA","WNBA","NFL","NHL"].includes(l)?l as PerformanceLeague:undefined}
 
 export function deriveScorecardSignal(card:ScorecardCard,scans:ScorecardScan[],supply:ScorecardSupply[],cache:ScorecardCatalystCache,performanceHistory:PlayerPerformanceSnapshot[]):Omit<SignalObservation,"id"|"signalAt">|null{
  const cardScans=latestTwo(scans.filter(s=>s.cardId===card.id));const current=card.marketScan||cardScans[0];
  const baselineMedian=Number(current?.currentMedian??cardScans[0]?.currentMedian);if(!Number.isFinite(baselineMedian)||baselineMedian<=0||Number(current?.acceptedCount??cardScans[0]?.acceptedCount??0)<3)return null;
- let leadScore=0,confirmScore=0,riskScore=0;const cat=topCatalyst(cache,card.player);
+ let leadScore=0,confirmScore=0,riskScore=0;const cat=topCatalyst(cache,card.player),league=getCardLeague(card as LeagueCard);
  if(cat&&cat.impact>=75){if(cat.tone==="negative")riskScore+=3;else leadScore+=cat.impact>=85?3:2}
- const perf=performanceSignal(latestPerformance(performanceHistory,card.player));
+ const perf=performanceSignal(latestPerformance(performanceHistory,card.player,performanceLeagueFor(card)));
  if(perf.direction==="SURGING")leadScore+=3;else if(perf.direction==="IMPROVING")leadScore+=2;else if(perf.direction==="SLUMPING")riskScore+=3;else if(perf.direction==="COOLING")riskScore+=2;
  if(cardScans.length>=2&&cardScans[0].velocity!=null&&cardScans[1].velocity!=null){const d=Number(cardScans[0].velocity)-Number(cardScans[1].velocity);if(d>=25)leadScore+=3;else if(d>=10)leadScore+=2;else if(d<=-25)riskScore+=3;else if(d<=-10)riskScore+=2}
  const sup=latestTwo(supply.filter(s=>s.cardId===card.id));if(sup.length>=2&&sup[1].acceptedCount>0){const d=(sup[0].acceptedCount-sup[1].acceptedCount)/sup[1].acceptedCount*100;if(d<=-30)leadScore+=3;else if(d<=-15)leadScore+=2;else if(d>=30)riskScore+=3;else if(d>=15)riskScore+=2}
@@ -40,7 +41,7 @@ export function deriveScorecardSignal(card:ScorecardCard,scans:ScorecardScan[],s
  else if(leadScore>=4&&confirmScore<2&&riskScore<=2){signalType="EARLY EDGE";direction="UP"}
  else if(leadScore>=3&&confirmScore>=2&&riskScore<=3){signalType="CONFIRMING";direction="UP"}
  if(!signalType)return null;
- const ctx=getCardMarketContext(card as MarketContextCard),league=getCardLeague(card as LeagueCard),edgeScore=Math.max(0,Math.min(100,50+leadScore*7+confirmScore*3-riskScore*8));
+ const ctx=getCardMarketContext(card as MarketContextCard),edgeScore=Math.max(0,Math.min(100,50+leadScore*7+confirmScore*3-riskScore*8));
  return{cardId:card.id,player:card.player,cardMeta:card.meta||[card.year,card.setName,card.cardNumber&&`#${card.cardNumber}`].filter(Boolean).join(" · "),benchmark:!!card.benchmark,baselineMedian,signalType,direction,edgeScore,leadScore,confirmScore,riskScore,catalystCategory:String(cat?.category||"none").trim().toLowerCase()||"none",league,role:ctx.role,sensitivity:ctx.sensitivity,graded:ctx.graded};
 }
 
@@ -54,7 +55,7 @@ export function mergeSignalObservations(existing:SignalObservation[],cards:Score
 
 export function resolveSignalOutcome(observation:SignalObservation,scans:ScorecardScan[],horizon:ScorecardHorizon,now=Date.now()):SignalOutcome{
  const cfg=SCORECARD_HORIZONS.find(x=>x[0]===horizon)!;const target=ms(observation.signalAt)+cfg[1]*3600000,targetAt=new Date(target).toISOString();if(now<target)return{observation,horizon,targetAt,scanAt:null,median:null,changePct:null,directionalMove:null,status:"PENDING",hit:null,meaningfulHit:null};
- const candidates=scans.filter(s=>s.cardId===observation.cardId&&ms(s.scannedAt)>=ms(observation.signalAt)&&ms(s.scannedAt)>=target-cfg[2]*3600000&&ms(s.scannedAt)<=target+cfg[2]*3600000&&s.currentMedian!=null&&s.currentMedian>0).sort((a,b)=>Math.abs(ms(a.scannedAt)-target)-Math.abs(ms(b.scannedAt)-target));
+ const candidates=scans.filter(s=>s.cardId===observation.cardId&&ms(s.scannedAt)>ms(observation.signalAt)&&ms(s.scannedAt)>=target-cfg[2]*3600000&&ms(s.scannedAt)<=target+cfg[2]*3600000&&s.currentMedian!=null&&s.currentMedian>0).sort((a,b)=>Math.abs(ms(a.scannedAt)-target)-Math.abs(ms(b.scannedAt)-target));
  const match=candidates[0];if(!match||match.currentMedian==null)return{observation,horizon,targetAt,scanAt:null,median:null,changePct:null,directionalMove:null,status:"NO MATCH",hit:null,meaningfulHit:null};
  const change=pct(observation.baselineMedian,match.currentMedian),directional=change==null?null:observation.direction==="UP"?change:-change;return{observation,horizon,targetAt,scanAt:match.scannedAt,median:match.currentMedian,changePct:change,directionalMove:directional,status:"RESOLVED",hit:directional!=null?directional>0:null,meaningfulHit:directional!=null?directional>=4:null};
 }
