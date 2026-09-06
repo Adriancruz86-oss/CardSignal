@@ -4,7 +4,7 @@ export type CloudUser={id:string;email:string;username:string};
 export type CloudSession={access_token:string;refresh_token:string;expires_at:number;user:{id:string;email?:string}};
 
 const URL=(process.env.NEXT_PUBLIC_SUPABASE_URL||"").replace(/\/$/,"");
-const KEY=process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY||"";
+const KEY=process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY||process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY||"";
 const SESSION_KEY="cardsignal-cloud-session";
 
 export function cloudConfigured(){return Boolean(URL&&KEY)}
