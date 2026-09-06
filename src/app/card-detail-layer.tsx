@@ -81,6 +81,16 @@ type Alert = {
   title: string;
   detail: string;
 };
+type DetailTab = "overview" | "market" | "history" | "research";
+type IdentityDraft = {
+  player: string;
+  year: string;
+  setName: string;
+  cardNumber: string;
+  variant: string;
+  grader: string;
+  grade: string;
+};
 type ScanResponse = {
   ok: boolean;
   error?: string;
@@ -255,7 +265,8 @@ function HistoryChart({ points }: { points: Snapshot[] }) {
 export default function CardDetailLayer() {
   const [card, setCard] = useState<Card | null>(null),
     [scanning, setScanning] = useState(false),
-    [advancedOpen, setAdvancedOpen] = useState(false),
+    [tab, setTab] = useState<DetailTab>("overview"),
+    [identityDraft, setIdentityDraft] = useState<IdentityDraft | null>(null),
     [error, setError] = useState("");
   useEffect(() => {
     const click = (e: MouseEvent) => {
@@ -266,7 +277,8 @@ export default function CardDetailLayer() {
       const c = findCard(row);
       if (c) {
         setCard(c);
-        setAdvancedOpen(false);
+        setTab("overview");
+        setIdentityDraft(null);
         setError("");
       }
     };
@@ -281,7 +293,8 @@ export default function CardDetailLayer() {
         c = cards().find((x) => x.id === id);
       if (c) {
         setCard(c);
-        setAdvancedOpen(false);
+        setTab("overview");
+        setIdentityDraft(null);
         setError("");
       }
     };
@@ -306,10 +319,10 @@ export default function CardDetailLayer() {
   useEffect(() => {
     document.body.classList.toggle(
       "cs-detail-advanced",
-      Boolean(card && advancedOpen),
+      Boolean(card && tab === "research"),
     );
     return () => document.body.classList.remove("cs-detail-advanced");
-  }, [card, advancedOpen]);
+  }, [card, tab]);
   const history = useMemo(
     () =>
       card
@@ -412,6 +425,85 @@ export default function CardDetailLayer() {
     window.dispatchEvent(new Event("cardsignal:user-cards-changed"));
     setCard(next.find((c) => c.id === card.id) || card);
   };
+  const beginIdentityEdit = () => {
+    if (!card) return;
+    const current = resolvedIdentity(card);
+    setIdentityDraft({
+      player: current.playerName || card.player,
+      year: current.year || "",
+      setName: current.setName || "",
+      cardNumber: current.cardNumber || "",
+      variant: current.variation || "",
+      grader: current.grader || "Raw",
+      grade: current.grade || "",
+    });
+    setTab("overview");
+  };
+  const saveIdentity = () => {
+    if (!card || !identityDraft) return;
+    const draft = {
+      ...identityDraft,
+      player: identityDraft.player.trim(),
+      year: identityDraft.year.trim(),
+      setName: identityDraft.setName.trim(),
+      cardNumber: identityDraft.cardNumber.trim().replace(/^#/, ""),
+      variant: identityDraft.variant.trim(),
+      grader: identityDraft.grader.trim() || "Raw",
+      grade: identityDraft.grader === "Raw" ? "" : identityDraft.grade.trim(),
+    };
+    if (!draft.player || !draft.year || !draft.setName || !draft.cardNumber) {
+      setError(
+        "Player, year, set, and card number are required for an exact identity.",
+      );
+      return;
+    }
+    if (draft.grader !== "Raw" && !draft.grade) {
+      setError("Enter the exact grade, or select Raw.");
+      return;
+    }
+    const meta = [
+      draft.year,
+      draft.setName,
+      `#${draft.cardNumber}`,
+      draft.variant,
+      draft.grader === "Raw" ? "Raw" : `${draft.grader} ${draft.grade}`,
+    ]
+      .filter(Boolean)
+      .join(" · ");
+    const next = cards().map((c) =>
+      c.id === card.id
+        ? {
+            ...c,
+            player: draft.player,
+            year: draft.year,
+            setName: draft.setName,
+            cardNumber: draft.cardNumber,
+            variant: draft.variant,
+            gradingCompany: draft.grader,
+            grade: draft.grade,
+            meta,
+            canonicalIdentity: {
+              playerName: draft.player,
+              year: draft.year,
+              setName: draft.setName,
+              cardNumber: draft.cardNumber,
+              variation: draft.variant,
+            },
+            catalogConfirmed: false,
+            marketScan: undefined,
+            supplySnapshot: undefined,
+            marketValue: 0,
+            valuationStatus: "NO_MATCH" as const,
+            score: 0,
+          }
+        : c,
+    );
+    localStorage.setItem(CARD_KEY, JSON.stringify(next));
+    window.dispatchEvent(new Event("cardsignal:user-cards-changed"));
+    setCard(next.find((c) => c.id === card.id) || card);
+    setIdentityDraft(null);
+    setError("");
+  };
   if (!card) return null;
   const s = card.marketScan,
     pulse = effectivePulse(s?.pulse, s?.change7d, card.supplySnapshot),
@@ -458,176 +550,323 @@ export default function CardDetailLayer() {
                   .join(" · ")}
             </p>
           </div>
-          <b className={t}>{pulse}</b>
-        </div>
-        <div className="cs-md-top">
-          <div className="cs-detail-cardart">
-            {card.image ? (
-              <img src={card.image} alt={card.player} />
-            ) : (
-              <div className="cs-css-card">
-                <small>{card.year || "CARD"}</small>
-                <strong>{initials(card.player)}</strong>
-                <span>{card.setName || "SAVED CARD"}</span>
-                <em>{card.cardNumber ? `#${card.cardNumber}` : "EXACT ID"}</em>
-              </div>
-            )}
+          <div className="cs-detail-head-actions">
+            <button onClick={beginIdentityEdit}>EDIT IDENTITY</button>
+            <b className={t}>{pulse}</b>
           </div>
-          <div className="cs-md-stats">
-            <div>
-              <small>CURRENT MEDIAN</small>
-              <strong>{money(s ? s.currentMedian : card.marketValue)}</strong>
-              <span>
-                {s
-                  ? s.acceptedCount
-                    ? `${s.acceptedCount} accepted matches`
-                    : "No current accepted matches"
-                  : "No current scan"}
-              </span>
-            </div>
-            <div>
-              <small>7D MOVEMENT</small>
-              <strong
-                className={(s?.change7d ?? 0) < 0 ? "negative" : "positive"}
+        </div>
+        <nav className="cs-detail-tabs" aria-label="Card detail sections">
+          {(["overview", "market", "history", "research"] as DetailTab[]).map(
+            (value) => (
+              <button
+                key={value}
+                className={tab === value ? "active" : ""}
+                onClick={() => setTab(value)}
               >
-                {pct(s?.change7d)}
-              </strong>
-              <span>
-                {s?.change7d == null
-                  ? "Needs dated sales in both windows"
-                  : "recent vs prior median"}
-              </span>
-            </div>
-            <div>
-              <small>PRIOR SCAN</small>
-              <strong>{money(previous?.currentMedian)}</strong>
-              <span>
-                {previous
-                  ? new Date(previous.scannedAt).toLocaleString()
-                  : "No prior scan"}
-              </span>
-            </div>
-            <div>
-              <small>SALES VELOCITY</small>
-              <strong>{s?.velocity ?? "—"}</strong>
-              <span>
-                {s ? `${s.recentSales} accepted sales / 7D` : "Not scanned"}
-              </span>
-            </div>
-          </div>
-        </div>
-        <div className="cs-md-evidence">
-          <div>
-            <small>CONFIDENCE</small>
-            <b>{s?.confidence || "NO SCAN"}</b>
-          </div>
-          <div>
-            <small>ACCEPTED / REJECTED</small>
-            <b>{s ? `${s.acceptedCount} / ${s.rejectedCount}` : "—"}</b>
-          </div>
-          <div>
-            <small>LAST SCAN</small>
-            <b>{s ? new Date(s.scannedAt).toLocaleString() : "Never"}</b>
-          </div>
-          <button onClick={rescan} disabled={scanning}>
-            {scanning ? "SCANNING…" : "RESCAN CARD"}
-          </button>
-          {s?.matchingVersion === 3 &&
-            s.currentMedian != null &&
-            card.valuationStatus !== "APPROVED" && (
-              <button className="approve" onClick={approveValuation}>
-                APPLY VALUE
+                {value.toUpperCase()}
               </button>
-            )}
-        </div>
-        {error && <div className="cs-md-error">{error}</div>}
-        <div className="cs-md-columns">
-          <article className="cs-md-panel">
-            <header>
-              <span>PRICE HISTORY</span>
-              <b>Saved exact-card scans</b>
-            </header>
-            <HistoryChart points={cardHistory} />
-          </article>
-          <article className="cs-md-panel">
-            <header>
-              <span>CHANGE TIMELINE</span>
-              <b>Material alerts</b>
-            </header>
-            {alerts.length ? (
-              <div className="cs-md-timeline">
-                {alerts.map((a) => (
-                  <div key={a.id}>
-                    <i>
-                      {a.kind === "sell" ? "▼" : a.kind === "buy" ? "▲" : "•"}
-                    </i>
-                    <p>
-                      <small>{new Date(a.createdAt).toLocaleString()}</small>
-                      <strong>{a.title}</strong>
-                      <span>{a.detail}</span>
-                    </p>
-                  </div>
-                ))}
-              </div>
-            ) : (
-              <div className="cs-md-empty compact">
-                <b>No material changes yet</b>
-                <span>Repeated scans will populate this timeline.</span>
-              </div>
-            )}
-          </article>
-        </div>
-        <SupplyWatchPanel
-          cardId={card.id}
-          player={id.playerName || card.player}
-          year={id.year || card.year}
-          setName={id.setName || card.setName}
-          cardNumber={id.cardNumber || card.cardNumber}
-          variant={id.variation || card.variant}
-          grader={id.grader}
-          grade={id.grade}
-          soldMedian={s?.currentMedian ?? null}
-          identityConfirmed={card.catalogConfirmed}
-        />
-        <article className="cs-md-panel cs-md-sales">
-          <header>
-            <span>ACCEPTED MARKET MATCHES</span>
-            <b>
-              {sales.length
-                ? `${sales.length} stored from latest scan`
-                : "Rescan to attach sale rows"}
-            </b>
-          </header>
-          {sales.length ? (
-            <div className="cs-md-sales-list">
-              {sales.slice(0, 8).map((sale, i) => (
-                <div key={`${sale.source}-${sale.id}-${i}`}>
-                  <p>
-                    <strong>{sale.title}</strong>
-                    <span>
-                      {sale.source} · {sale.marketplace}
-                      {sale.date
-                        ? ` · ${new Date(sale.date).toLocaleDateString()}`
-                        : ""}
-                    </span>
-                  </p>
-                  <b>{money(sale.price)}</b>
-                </div>
-              ))}
-            </div>
-          ) : (
-            <div className="cs-md-empty compact">
-              <b>No stored sale rows yet</b>
-              <span>CardSignal does not invent evidence.</span>
-            </div>
+            ),
           )}
-        </article>
-        <button
-          className="cs-md-advanced-toggle"
-          onClick={() => setAdvancedOpen((value) => !value)}
-        >
-          {advancedOpen ? "HIDE ADVANCED RESEARCH" : "SHOW ADVANCED RESEARCH"}
-        </button>
+        </nav>
+        {tab === "overview" && (
+          <>
+            <div className="cs-md-top">
+              <div className="cs-detail-cardart">
+                {card.image ? (
+                  <img src={card.image} alt={card.player} />
+                ) : (
+                  <div className="cs-css-card">
+                    <small>{card.year || "CARD"}</small>
+                    <strong>{initials(card.player)}</strong>
+                    <span>{card.setName || "SAVED CARD"}</span>
+                    <em>
+                      {card.cardNumber ? `#${card.cardNumber}` : "EXACT ID"}
+                    </em>
+                  </div>
+                )}
+              </div>
+              <div className="cs-md-stats">
+                <div>
+                  <small>CURRENT MEDIAN</small>
+                  <strong>
+                    {money(s ? s.currentMedian : card.marketValue)}
+                  </strong>
+                  <span>
+                    {s
+                      ? s.acceptedCount
+                        ? `${s.acceptedCount} accepted matches`
+                        : "No current accepted matches"
+                      : "No current scan"}
+                  </span>
+                </div>
+                <div>
+                  <small>7D MOVEMENT</small>
+                  <strong
+                    className={(s?.change7d ?? 0) < 0 ? "negative" : "positive"}
+                  >
+                    {pct(s?.change7d)}
+                  </strong>
+                  <span>
+                    {s?.change7d == null
+                      ? "Needs dated sales in both windows"
+                      : "recent vs prior median"}
+                  </span>
+                </div>
+                <div>
+                  <small>PRIOR SCAN</small>
+                  <strong>{money(previous?.currentMedian)}</strong>
+                  <span>
+                    {previous
+                      ? new Date(previous.scannedAt).toLocaleString()
+                      : "No prior scan"}
+                  </span>
+                </div>
+                <div>
+                  <small>SALES VELOCITY</small>
+                  <strong>{s?.velocity ?? "—"}</strong>
+                  <span>
+                    {s ? `${s.recentSales} accepted sales / 7D` : "Not scanned"}
+                  </span>
+                </div>
+              </div>
+            </div>
+            <div className="cs-md-evidence">
+              <div>
+                <small>CONFIDENCE</small>
+                <b>{s?.confidence || "NO SCAN"}</b>
+              </div>
+              <div>
+                <small>ACCEPTED / REJECTED</small>
+                <b>{s ? `${s.acceptedCount} / ${s.rejectedCount}` : "—"}</b>
+              </div>
+              <div>
+                <small>LAST SCAN</small>
+                <b>{s ? new Date(s.scannedAt).toLocaleString() : "Never"}</b>
+              </div>
+              <button onClick={rescan} disabled={scanning}>
+                {scanning ? "SCANNING…" : "RESCAN CARD"}
+              </button>
+              {s?.matchingVersion === 3 &&
+                s.currentMedian != null &&
+                card.valuationStatus !== "APPROVED" && (
+                  <button className="approve" onClick={approveValuation}>
+                    APPLY VALUE
+                  </button>
+                )}
+            </div>
+            {identityDraft && (
+              <section className="cs-identity-editor">
+                <header>
+                  <div>
+                    <span>EDIT EXACT IDENTITY</span>
+                    <b>
+                      Changing identity clears old market evidence and
+                      valuation.
+                    </b>
+                  </div>
+                  <button onClick={() => setIdentityDraft(null)}>CANCEL</button>
+                </header>
+                <div>
+                  <label>
+                    <span>PLAYER / CARD NAME</span>
+                    <input
+                      value={identityDraft.player}
+                      onChange={(e) =>
+                        setIdentityDraft({
+                          ...identityDraft,
+                          player: e.target.value,
+                        })
+                      }
+                    />
+                  </label>
+                  <label>
+                    <span>YEAR</span>
+                    <input
+                      value={identityDraft.year}
+                      onChange={(e) =>
+                        setIdentityDraft({
+                          ...identityDraft,
+                          year: e.target.value,
+                        })
+                      }
+                    />
+                  </label>
+                  <label>
+                    <span>SET</span>
+                    <input
+                      value={identityDraft.setName}
+                      onChange={(e) =>
+                        setIdentityDraft({
+                          ...identityDraft,
+                          setName: e.target.value,
+                        })
+                      }
+                    />
+                  </label>
+                  <label>
+                    <span>CARD #</span>
+                    <input
+                      value={identityDraft.cardNumber}
+                      onChange={(e) =>
+                        setIdentityDraft({
+                          ...identityDraft,
+                          cardNumber: e.target.value,
+                        })
+                      }
+                    />
+                  </label>
+                  <label>
+                    <span>VARIANT / PARALLEL</span>
+                    <input
+                      value={identityDraft.variant}
+                      onChange={(e) =>
+                        setIdentityDraft({
+                          ...identityDraft,
+                          variant: e.target.value,
+                        })
+                      }
+                    />
+                  </label>
+                  <label>
+                    <span>CONDITION</span>
+                    <select
+                      value={identityDraft.grader}
+                      onChange={(e) =>
+                        setIdentityDraft({
+                          ...identityDraft,
+                          grader: e.target.value,
+                          grade:
+                            e.target.value === "Raw" ? "" : identityDraft.grade,
+                        })
+                      }
+                    >
+                      <option>Raw</option>
+                      <option>PSA</option>
+                      <option>BGS</option>
+                      <option>SGC</option>
+                      <option>CGC</option>
+                    </select>
+                  </label>
+                  {identityDraft.grader !== "Raw" && (
+                    <label>
+                      <span>GRADE</span>
+                      <input
+                        value={identityDraft.grade}
+                        onChange={(e) =>
+                          setIdentityDraft({
+                            ...identityDraft,
+                            grade: e.target.value,
+                          })
+                        }
+                      />
+                    </label>
+                  )}
+                </div>
+                <button className="save" onClick={saveIdentity}>
+                  SAVE IDENTITY & CLEAR OLD EVIDENCE
+                </button>
+              </section>
+            )}
+          </>
+        )}
+        {error && <div className="cs-md-error">{error}</div>}
+        {tab === "history" && (
+          <div className="cs-md-columns">
+            <article className="cs-md-panel">
+              <header>
+                <span>PRICE HISTORY</span>
+                <b>Saved exact-card scans</b>
+              </header>
+              <HistoryChart points={cardHistory} />
+            </article>
+            <article className="cs-md-panel">
+              <header>
+                <span>CHANGE TIMELINE</span>
+                <b>Material alerts</b>
+              </header>
+              {alerts.length ? (
+                <div className="cs-md-timeline">
+                  {alerts.map((a) => (
+                    <div key={a.id}>
+                      <i>
+                        {a.kind === "sell" ? "▼" : a.kind === "buy" ? "▲" : "•"}
+                      </i>
+                      <p>
+                        <small>{new Date(a.createdAt).toLocaleString()}</small>
+                        <strong>{a.title}</strong>
+                        <span>{a.detail}</span>
+                      </p>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <div className="cs-md-empty compact">
+                  <b>No material changes yet</b>
+                  <span>Repeated scans will populate this timeline.</span>
+                </div>
+              )}
+            </article>
+          </div>
+        )}
+        {tab === "market" && (
+          <>
+            <SupplyWatchPanel
+              cardId={card.id}
+              player={id.playerName || card.player}
+              year={id.year || card.year}
+              setName={id.setName || card.setName}
+              cardNumber={id.cardNumber || card.cardNumber}
+              variant={id.variation || card.variant}
+              grader={id.grader}
+              grade={id.grade}
+              soldMedian={s?.currentMedian ?? null}
+              identityConfirmed={card.catalogConfirmed}
+            />
+            <article className="cs-md-panel cs-md-sales">
+              <header>
+                <span>ACCEPTED MARKET MATCHES</span>
+                <b>
+                  {sales.length
+                    ? `${sales.length} stored from latest scan`
+                    : "Rescan to attach sale rows"}
+                </b>
+              </header>
+              {sales.length ? (
+                <div className="cs-md-sales-list">
+                  {sales.slice(0, 8).map((sale, i) => (
+                    <div key={`${sale.source}-${sale.id}-${i}`}>
+                      <p>
+                        <strong>{sale.title}</strong>
+                        <span>
+                          {sale.source} · {sale.marketplace}
+                          {sale.date
+                            ? ` · ${new Date(sale.date).toLocaleDateString()}`
+                            : ""}
+                        </span>
+                      </p>
+                      <b>{money(sale.price)}</b>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <div className="cs-md-empty compact">
+                  <b>No stored sale rows yet</b>
+                  <span>CardSignal does not invent evidence.</span>
+                </div>
+              )}
+            </article>
+          </>
+        )}
+        {tab === "research" && (
+          <div className="cs-md-research-intro">
+            <b>Advanced research</b>
+            <span>
+              Catalysts, grading population, league context, and performance
+              baselines are separated from the core valuation because their
+              predictive value is still being validated.
+            </span>
+          </div>
+        )}
         <footer>
           Charts and evidence use only saved scans and accepted identity-matched
           market rows.
@@ -682,6 +921,51 @@ export default function CardDetailLayer() {
           justify-content: space-between;
           gap: 20px;
           padding-right: 45px;
+        }
+        .cs-detail-head-actions {
+          display: flex;
+          align-items: center;
+          gap: 8px;
+        }
+        .cs-detail-head-actions > button {
+          height: 31px;
+          padding: 0 9px;
+          border: 1px solid rgba(83, 205, 245, 0.18);
+          border-radius: 7px;
+          background: #071724;
+          color: #8fcde0;
+          font-size: 7px;
+          font-weight: 900;
+        }
+        .cs-detail-head-actions > b {
+          padding: 7px 10px;
+          border: 1px solid rgba(83, 205, 245, 0.24);
+          border-radius: 7px;
+          color: #82dff7;
+          font-size: 8px;
+        }
+        .cs-detail-tabs {
+          display: flex;
+          gap: 5px;
+          margin: 18px 0 4px;
+          padding-bottom: 8px;
+          border-bottom: 1px solid rgba(77, 188, 228, 0.1);
+        }
+        .cs-detail-tabs button {
+          height: 32px;
+          padding: 0 12px;
+          border: 1px solid transparent;
+          border-radius: 7px;
+          background: transparent;
+          color: #6f8d9d;
+          font-size: 8px;
+          font-weight: 900;
+          letter-spacing: 0.06em;
+        }
+        .cs-detail-tabs button.active {
+          border-color: rgba(83, 205, 245, 0.2);
+          background: rgba(24, 86, 110, 0.16);
+          color: #9ae8ff;
         }
         .cs-detail-head > div > span {
           color: #55dfff;
@@ -836,6 +1120,95 @@ export default function CardDetailLayer() {
           border-color: rgba(85, 218, 255, 0.35);
           background: rgba(44, 173, 216, 0.08);
           color: #8ee8ff;
+        }
+        .cs-identity-editor {
+          margin: 10px 0 14px;
+          padding: 14px;
+          border: 1px solid rgba(239, 200, 110, 0.25);
+          border-radius: 10px;
+          background: rgba(38, 31, 12, 0.18);
+        }
+        .cs-identity-editor header {
+          display: flex;
+          justify-content: space-between;
+          gap: 12px;
+          align-items: center;
+        }
+        .cs-identity-editor header span,
+        .cs-identity-editor header b {
+          display: block;
+        }
+        .cs-identity-editor header span {
+          color: #efc86e;
+          font-size: 8px;
+          font-weight: 900;
+          letter-spacing: 0.1em;
+        }
+        .cs-identity-editor header b {
+          margin-top: 3px;
+          color: #8d8a73;
+          font-size: 7px;
+        }
+        .cs-identity-editor header button {
+          border: 0;
+          background: transparent;
+          color: #8198a5;
+          font-size: 7px;
+          font-weight: 900;
+        }
+        .cs-identity-editor > div {
+          display: grid;
+          grid-template-columns: 2fr 1fr 2fr 1fr;
+          gap: 8px;
+          margin-top: 12px;
+        }
+        .cs-identity-editor label span {
+          display: block;
+          margin-bottom: 4px;
+          color: #708c9a;
+          font-size: 6px;
+          font-weight: 900;
+        }
+        .cs-identity-editor input,
+        .cs-identity-editor select {
+          width: 100%;
+          height: 36px;
+          padding: 0 9px;
+          border: 1px solid rgba(89, 183, 220, 0.14);
+          border-radius: 7px;
+          background: #061621;
+          color: #e5f6fc;
+        }
+        .cs-identity-editor .save {
+          width: 100%;
+          height: 38px;
+          margin-top: 10px;
+          border: 1px solid rgba(239, 200, 110, 0.28);
+          border-radius: 7px;
+          background: rgba(174, 135, 40, 0.08);
+          color: #efcf7e;
+          font-size: 7px;
+          font-weight: 900;
+        }
+        .cs-md-research-intro {
+          margin: 14px 0;
+          padding: 16px;
+          border: 1px solid rgba(113, 153, 190, 0.13);
+          border-radius: 9px;
+          background: rgba(6, 20, 31, 0.58);
+        }
+        .cs-md-research-intro b,
+        .cs-md-research-intro span {
+          display: block;
+        }
+        .cs-md-research-intro b {
+          font-size: 12px;
+        }
+        .cs-md-research-intro span {
+          margin-top: 5px;
+          color: #728d9b;
+          font-size: 8px;
+          line-height: 1.5;
         }
         .cs-md-advanced-toggle {
           width: 100%;
@@ -1002,6 +1375,22 @@ export default function CardDetailLayer() {
           color: #ff7b8b !important;
         }
         @media (max-width: 760px) {
+          .cs-detail-head {
+            align-items: flex-start;
+          }
+          .cs-detail-head-actions {
+            align-items: flex-end;
+            flex-direction: column;
+          }
+          .cs-detail-tabs {
+            overflow-x: auto;
+          }
+          .cs-detail-tabs button {
+            flex: 0 0 auto;
+          }
+          .cs-identity-editor > div {
+            grid-template-columns: 1fr 1fr;
+          }
           .cs-md-top,
           .cs-md-columns {
             grid-template-columns: 1fr;
