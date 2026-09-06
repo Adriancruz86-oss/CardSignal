@@ -43,6 +43,7 @@ import BenchmarkScanReadinessLayer from "./benchmark-scan-readiness-layer";
 import ValidationCohortLayer from "./validation-cohort-layer";
 import PokemonPortfolioLayer from "./pokemon-portfolio-layer";
 import PokemonPhotoCaptureLayer from "./pokemon-photo-capture-v2";
+import SportsCatalogImageLayer from "./sports-catalog-image-layer";
 import EdgeStackLayer from "./edge-stack-layer";
 import HistoricalAnalogsLayer from "./historical-analogs-layer";
 import PatternPlaybookLayer from "./pattern-playbook-layer";
@@ -109,6 +110,7 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
     <ValidationCohortLayer />
     <PokemonPortfolioLayer />
     <PokemonPhotoCaptureLayer />
+    <SportsCatalogImageLayer />
     <EdgeStackLayer />
     <HistoricalAnalogsLayer />
     <PatternPlaybookLayer />
