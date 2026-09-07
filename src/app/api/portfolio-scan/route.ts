@@ -252,7 +252,8 @@ function dateMs(v: string) {
 
 export async function GET(request: NextRequest) {
   const sp = new URL(request.url).searchParams;
-  const provider = sp.get("provider") === "both" ? "both" : "soldcomps";
+  const requestedProvider = sp.get("provider");
+  const provider = requestedProvider === "both" || requestedProvider === "cardapi" ? requestedProvider : "soldcomps";
   const c: Canonical = {
     player: sp.get("player")?.trim() ?? "",
     year: sp.get("year")?.trim() ?? "",
@@ -284,8 +285,10 @@ export async function GET(request: NextRequest) {
     .join(" ");
   const started = Date.now();
   const [sold, card] = await Promise.all([
-    soldComps(q),
-    provider === "both"
+    provider === "cardapi"
+      ? Promise.resolve({ ok: false, sales: [] as Sale[], error: "Skipped by scan settings" })
+      : soldComps(q),
+    provider === "both" || provider === "cardapi"
       ? cardApi(q)
       : Promise.resolve({
           ok: false,
