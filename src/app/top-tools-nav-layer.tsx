@@ -30,6 +30,7 @@ const LAB:Tool[]=[
  {label:"Population",selector:".cs-pop-alert-launch",icon:"▥"},
  {label:"Segments",selector:".cs-segment-launch",icon:"▦"},
  {label:"Benchmark",selector:".cs-benchmark-launch",icon:"▣"},
+ {label:"Curated 50",selector:".cs-curated-launch",icon:"★"},
  {label:"Bench Health",selector:".cs-benchmark-health-launch",icon:"▤"},
  {label:"Scan Ready",selector:".cs-benchmark-readiness-launch",icon:"◷"},
  {label:"Opportunities",selector:".cs-opportunity-launch",icon:"◇"},

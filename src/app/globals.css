@@ -99,3 +99,5 @@ button { font: inherit; }
 
 @media(max-width:1180px){.topbar{grid-template-columns:220px 1fr auto;padding-inline:20px}.nav-tabs button{padding-inline:9px;font-size:11px}.hero-grid{grid-template-columns:1fr}.triple-grid{grid-template-columns:1fr 1fr}.bottom-grid{grid-template-columns:1fr 1fr}.snapshot-panel{grid-column:1/-1}.stat-grid{grid-template-columns:1fr 1fr}}
 @media(max-width:760px){.topbar{position:relative;grid-template-columns:1fr auto}.brand-lockup{height:56px}.nav-tabs{grid-column:1/-1;justify-content:flex-start;overflow:auto;padding-top:6px}.add-card{grid-column:2;grid-row:1}.dashboard-wrap{width:min(100% - 24px,1480px);padding-top:20px}.eyebrow-row{align-items:flex-start;flex-direction:column}.scan-status{display:none}.stat-grid,.triple-grid,.bottom-grid{grid-template-columns:1fr}.snapshot-panel{grid-column:auto}.top-signal-content{grid-template-columns:1fr}.card-stage{min-height:245px}.card-silhouette{width:140px}.player-mark{height:132px}.hero-grid{grid-template-columns:1fr}.massive-score{font-size:58px}.price-line{flex-wrap:wrap}}
+
+.cs-curated-launch{display:none!important}
