@@ -80,7 +80,7 @@ const STORAGE_KEY = "cardsignal-added-cards";
 const MAX_CARDS = 500;
 const CONCURRENCY = 2;
 type ScanScope = "needs-data" | "stale" | "all";
-type ScanProvider = "soldcomps" | "both";
+type ScanProvider = "cardapi" | "soldcomps" | "both";
 
 function readCards(): StoredCard[] {
   try {
@@ -162,7 +162,7 @@ export default function PortfolioPulseV2() {
     [cards, setCards] = useState<StoredCard[]>([]),
     [scanning, setScanning] = useState(false),
     [scanScope, setScanScope] = useState<ScanScope>("needs-data"),
-    [scanProvider, setScanProvider] = useState<ScanProvider>("soldcomps"),
+    [scanProvider, setScanProvider] = useState<ScanProvider>("cardapi"),
     [visibleCount, setVisibleCount] = useState(15),
     [progress, setProgress] = useState("");
   const cancelRef = useRef(false);
@@ -393,6 +393,7 @@ export default function PortfolioPulseV2() {
                   }
                   disabled={scanning}
                 >
+                  <option value="cardapi">The Card API (available)</option>
                   <option value="soldcomps">SoldComps only</option>
                   <option value="both">SoldComps + Card API</option>
                 </select>
