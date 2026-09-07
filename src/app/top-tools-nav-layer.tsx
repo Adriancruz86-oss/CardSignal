@@ -7,6 +7,7 @@ type Tool={label:string;selector:string;icon:string};
 const CORE:Tool[]=[
  {label:"Portfolio Pulse",selector:".cs-pulse-launch",icon:"◉"},
  {label:"Live Market",selector:".cs-live-launch",icon:"◎"},
+ {label:"Catalysts",selector:".cs-catalyst-launch",icon:"✦"},
  {label:"Action Center",selector:".cs-ac-launch",icon:"⚡"},
 ];
 const LAB:Tool[]=[
@@ -21,7 +22,6 @@ const LAB:Tool[]=[
  {label:"Signal Scorecard",selector:".cs-scorecard-launch",icon:"✓"},
  {label:"Signal Lab",selector:".cs-signal-lab-launch",icon:"⌁"},
  {label:"Data Sources",selector:".cs-sources-launch",icon:"●"},
- {label:"Catalysts",selector:".cs-catalyst-launch",icon:"✦"},
  {label:"Catalyst History",selector:".cs-cat-history-launch",icon:"◫"},
  {label:"Outcomes",selector:".cs-outcome-launch",icon:"◒"},
  {label:"Cohorts",selector:".cs-validation-cohort-launch",icon:"◩"},
