@@ -16,6 +16,7 @@ import LongitudinalScanHistoryLayer from "./longitudinal-scan-history-layer";
 import HistoryHomeBridge from "./history-home-bridge";
 import ActionCenterLayer from "./action-center-layer";
 import TopToolsNavLayer from "./top-tools-nav-layer";
+import SealedNavBridge from "./sealed-nav-bridge";
 import StatCardNavigationLayer from "./stat-card-navigation-layer";
 import CardSignalScoreLayer from "./card-signal-score-layer";
 import CatalystCenterLayer from "./catalyst-center-layer";
@@ -102,6 +103,7 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
         <HistoryHomeBridge />
         <ActionCenterLayer />
         <TopToolsNavLayer />
+        <SealedNavBridge />
         <StatCardNavigationLayer />
         <CardSignalScoreLayer />
         <CatalystCenterLayer />
