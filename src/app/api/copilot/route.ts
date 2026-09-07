@@ -140,6 +140,15 @@ function mergeNews(...groups: NewsEvent[][]) {
         Date.parse(a.publishedAt || "1970-01-01"),
   );
 }
+function diverseNews(news: NewsEvent[]) {
+  const seen = new Set<string>();
+  return news.filter((article) => {
+    const key = `${normalizedPlayer(article.player)}|${String(article.domain || "unknown").toLowerCase()}|${article.category || "PLAYER NEWS"}`;
+    if (seen.has(key)) return false;
+    seen.add(key);
+    return true;
+  });
+}
 function compactCard(card: Card) {
   return {
     id: Number(card.id || 0),
@@ -192,11 +201,12 @@ function portfolioContext(
     .slice(0, MAX_CARDS)
     .map((card) => {
       const compact = compactCard(card);
-      const playerNews = news
-        .filter(
+      const playerNews = diverseNews(
+        news.filter(
           (article) =>
             normalizedPlayer(article.player) === normalizedPlayer(compact.name),
-        )
+        ),
+      )
         .slice(0, 3)
         .map(({ url: _url, ...article }) => article);
       return { ...compact, recentNews: playerNews };
@@ -213,8 +223,9 @@ function portfolioContext(
       .map((article) => normalizedPlayer(article.player))
       .filter((player) => players.has(player)),
   );
-  const collectionNews = news
-    .filter((article) => players.has(normalizedPlayer(article.player)))
+  const collectionNews = diverseNews(
+    news.filter((article) => players.has(normalizedPlayer(article.player))),
+  )
     .slice(0, 40)
     .map(({ url: _url, ...article }) => article);
   return {
