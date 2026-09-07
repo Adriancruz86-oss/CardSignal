@@ -177,7 +177,46 @@ function parseModelJson(text: string) {
     .trim()
     .replace(/^```json\s*/i, "")
     .replace(/\s*```$/, "");
-  return JSON.parse(cleaned) as Json;
+  try {
+    return JSON.parse(cleaned) as Json;
+  } catch {
+    const readPartialString = (key: string) => {
+      const marker = `"${key}"`;
+      const markerAt = cleaned.indexOf(marker);
+      if (markerAt < 0) return "";
+      const colonAt = cleaned.indexOf(":", markerAt + marker.length);
+      const quoteAt = cleaned.indexOf('"', colonAt + 1);
+      if (colonAt < 0 || quoteAt < 0) return "";
+      let raw = "",
+        escaped = false;
+      for (let index = quoteAt + 1; index < cleaned.length; index++) {
+        const character = cleaned[index];
+        if (character === '"' && !escaped) break;
+        raw += character;
+        escaped = character === "\\" && !escaped;
+        if (character !== "\\") escaped = false;
+      }
+      if (raw.endsWith("\\")) raw = raw.slice(0, -1);
+      try {
+        return JSON.parse(`"${raw}"`) as string;
+      } catch {
+        return raw
+          .replace(/\\n/g, "\n")
+          .replace(/\\"/g, '"')
+          .replace(/\\\\/g, "\\");
+      }
+    };
+    return {
+      title: readPartialString("title") || "Just-In analysis",
+      answer:
+        readPartialString("answer") ||
+        "The model response ended before its analysis was complete. Please try the question again.",
+      observations: [],
+      evidenceQuality: "LIMITED",
+      proposedActions: [],
+      partial: true,
+    };
+  }
 }
 
 export async function GET() {
@@ -247,7 +286,7 @@ export async function POST(request: NextRequest) {
           contents: [{ role: "user", parts: [{ text: prompt }] }],
           generationConfig: {
             temperature: 0.2,
-            maxOutputTokens: 900,
+            maxOutputTokens: 4096,
             responseMimeType: "application/json",
             responseSchema: {
               type: "OBJECT",
@@ -284,7 +323,7 @@ export async function POST(request: NextRequest) {
                         ],
                       },
                       label: { type: "STRING" },
-                  cardId: { type: "INTEGER", nullable: true },
+                      cardId: { type: "INTEGER", nullable: true },
                       confirmationRequired: { type: "BOOLEAN" },
                       reason: { type: "STRING" },
                     },
