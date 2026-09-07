@@ -48,7 +48,7 @@ function env() {
       process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY ||
       "",
     geminiKey: process.env.GEMINI_API_KEY || "",
-    model: process.env.GEMINI_MODEL || "gemini-2.5-flash",
+    model: process.env.GEMINI_MODEL || "gemini-3.6-flash",
   };
 }
 function limited(userId: string) {
