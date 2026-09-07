@@ -4,6 +4,10 @@
     {
       "path": "/api/cron/portfolio-scan",
       "schedule": "17 6 * * *"
+    },
+    {
+      "path": "/api/cron/sealed-scan",
+      "schedule": "23 */4 * * *"
     }
   ]
 }
