@@ -152,7 +152,7 @@ export async function POST(request: NextRequest) {
     const scanId = text(frontResult.raw.json.requestId) || `cardsight_${Date.now()}_${Math.random().toString(36).slice(2, 9)}`;
     scans.set(scanId, { status: "completed", identification: frontResult.identification, front: frontEvidence, back: backEvidence, agreement: match, confidenceLevel: level });
 
-    return NextResponse.json({ ok: true, scanId, status: "completed", provider: "CardSight AI", mode: frontResult.mode || "auto", cardDetected: true, detectedCount: frontResult.detectedCount, confidence: frontResult.identification.confidence, confidenceLevel: level, backProvided: back instanceof File, backDetected: backEvidence?.detected ?? false, agreement: match });
+    return NextResponse.json({ ok: true, scanId, status: "completed", provider: "CardSight AI", mode: frontResult.mode || "auto", cardDetected: true, detectedCount: frontResult.detectedCount, identification: frontResult.identification, frontEvidence, backEvidence, confidence: frontResult.identification.confidence, confidenceLevel: level, backProvided: back instanceof File, backDetected: backEvidence?.detected ?? false, agreement: match });
   } catch (error) {
     return NextResponse.json({ ok: false, error: error instanceof Error ? error.message : "CardSight photo identification failed" }, { status: 502 });
   }

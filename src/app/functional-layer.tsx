@@ -355,24 +355,15 @@ export default function FunctionalLayer() {
             ? "Photo recognition needs CARDSIGHT_API_KEY in .env.local."
             : sj.error || "Could not start identification",
         );
-      const scanId = String(sj.scanId || "");
-      if (!scanId) throw new Error("Scanner did not return a scan id");
-      const poll = await fetch(
-          `/api/card-photo-identify?id=${encodeURIComponent(scanId)}`,
-          { cache: "no-store" },
-        ),
-        pj = await poll.json();
-      if (!poll.ok || !pj.ok)
-        throw new Error(pj.error || "Identification failed");
-      const result = pj.identification as IdentifyResult | null;
+      const result = sj.identification as IdentifyResult | null;
       if (!result)
         throw new Error("Photo identification did not return a usable result.");
       const evidence: VisualEvidence = {
-        confidenceLevel: pj.confidenceLevel || "UNKNOWN",
-        agreement: pj.agreement || "FRONT_ONLY",
-        frontDetected: Boolean(pj.frontEvidence?.detected),
+        confidenceLevel: sj.confidenceLevel || "UNKNOWN",
+        agreement: sj.agreement || "FRONT_ONLY",
+        frontDetected: Boolean(sj.frontEvidence?.detected),
         backProvided: Boolean(backFile),
-        backDetected: Boolean(pj.backEvidence?.detected),
+        backDetected: Boolean(sj.backEvidence?.detected),
         visualCardId: result.cardId || undefined,
         catalogAgreement: "UNVERIFIED",
       };
