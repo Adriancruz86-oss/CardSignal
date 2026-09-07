@@ -1,0 +1,26 @@
+"use client";
+
+import { cloudConfigured, readSession, refreshSession } from "../cloud-client";
+
+const URL=(process.env.NEXT_PUBLIC_SUPABASE_URL||"").replace(/\/$/,"");
+const KEY=process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY||process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY||"";
+function headers(token:string,prefer?:string){return{apikey:KEY,Authorization:`Bearer ${token}`,"Content-Type":"application/json",...(prefer?{Prefer:prefer}:{})}}
+async function rest(path:string,opts:{method?:string;body?:unknown;token:string;prefer?:string}){const r=await fetch(`${URL}/rest/v1/${path}`,{method:opts.method||"GET",headers:headers(opts.token,opts.prefer),body:opts.body?JSON.stringify(opts.body):undefined,cache:"no-store"});const raw=await r.text();const data=raw?JSON.parse(raw):null;if(!r.ok)throw new Error(String(data?.message||data?.hint||`Cloud request failed (${r.status})`));return data}
+async function session(){if(!cloudConfigured())return null;return (await refreshSession())||readSession()}
+
+export type SealedCatalogProduct={id:string;displayName:string;category:"Sports"|"Pokémon";format:string;imageUrl?:string|null;market:number|null;retail:number|null;retailSource?:string|null;msrp:number|null};
+export type SealedPosition={productId:string;displayName:string;category:"Sports"|"Pokémon";format:string;imageUrl?:string|null;quantity:number;averageCost:number;totalCost:number;marketUnit:number|null;marketValue:number|null;unrealized:number|null;unrealizedPct:number|null;retailUnit:number|null;msrp:number|null;recommendation:"ADD"|"HOLD"|"TAKE PROFIT"|"REVIEW";reason:string};
+
+export async function readSealedOwnership(){const s=await session();if(!s)return{products:[] as SealedCatalogProduct[],positions:[] as SealedPosition[]};const[products,lots,snaps]=await Promise.all([
+ rest("sealed_products?select=id,display_name,category,format,image_url,msrp,best_retail_price,best_retail_source&order=updated_at.desc&limit=300",{token:s.access_token}),
+ rest("sealed_position_lots?select=id,sealed_product_id,quantity,unit_cost,purchased_at,retailer,notes,created_at&order=created_at.desc&limit=1000",{token:s.access_token}),
+ rest("sealed_market_snapshots?select=sealed_product_id,scanned_at,market_median&order=scanned_at.desc&limit=2000",{token:s.access_token}),
+]);
+ const latest=new Map<string,number>();for(const row of Array.isArray(snaps)?snaps:[]){if(!latest.has(row.sealed_product_id)&&Number(row.market_median)>0)latest.set(row.sealed_product_id,Number(row.market_median))}
+ const catalog:SealedCatalogProduct[]=(Array.isArray(products)?products:[]).map((p:any)=>({id:p.id,displayName:p.display_name,category:p.category,format:p.format,imageUrl:p.image_url||null,market:latest.get(p.id)??null,retail:p.best_retail_price==null?null:Number(p.best_retail_price),retailSource:p.best_retail_source||null,msrp:p.msrp==null?null:Number(p.msrp)}));
+ const grouped=new Map<string,{qty:number,cost:number}>();for(const lot of Array.isArray(lots)?lots:[]){const g=grouped.get(lot.sealed_product_id)||{qty:0,cost:0};const qty=Number(lot.quantity||0),unit=Number(lot.unit_cost||0);g.qty+=qty;g.cost+=qty*unit;grouped.set(lot.sealed_product_id,g)}
+ const positions:SealedPosition[]=[];for(const p of catalog){const g=grouped.get(p.id);if(!g||g.qty<=0)continue;const avg=g.cost/g.qty;const marketUnit=p.market??p.retail??null;const value=marketUnit==null?null:marketUnit*g.qty;const unreal=value==null?null:value-g.cost;const pct=unreal==null||g.cost<=0?null:(unreal/g.cost)*100;let recommendation:SealedPosition["recommendation"]="HOLD",reason="Position is near cost basis; keep monitoring market and retail supply.";if(marketUnit==null){recommendation="REVIEW";reason="No current market price is available, so the position cannot be valued confidently."}else if(pct!=null&&pct>=35){recommendation="TAKE PROFIT";reason=`Position is up ${pct.toFixed(0)}% versus cost basis; consider locking in part of the gain.`}else if(pct!=null&&pct<=-12&&p.retail!=null&&p.retail<avg*.9){recommendation="ADD";reason="Verified retail entry is materially below your average cost; adding could improve cost basis if conviction remains."}else if(pct!=null&&pct>=8){recommendation="HOLD";reason="Position is profitable, but not extended enough to force a profit-taking decision."}
+ positions.push({productId:p.id,displayName:p.displayName,category:p.category,format:p.format,imageUrl:p.imageUrl,quantity:g.qty,averageCost:avg,totalCost:g.cost,marketUnit,marketValue:value,unrealized:unreal,unrealizedPct:pct,retailUnit:p.retail,msrp:p.msrp,recommendation,reason})}
+ return{products:catalog,positions};}
+
+export async function addSealedLot(input:{productId:string;quantity:number;unitCost:number;purchasedAt?:string;retailer?:string;notes?:string}){const s=await session();if(!s)throw new Error("Sign in to save sealed ownership.");if(input.quantity<=0||input.unitCost<0)throw new Error("Enter a valid quantity and unit cost.");await rest("sealed_position_lots",{method:"POST",token:s.access_token,prefer:"return=minimal",body:{user_id:s.user.id,sealed_product_id:input.productId,quantity:input.quantity,unit_cost:input.unitCost,purchased_at:input.purchasedAt||null,retailer:input.retailer||null,notes:input.notes||null}})}
