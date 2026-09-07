@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { fetchPlayerCatalysts, stableEventKey, type NewsArticle } from "@/lib/news-intelligence";
 
 export const dynamic = "force-dynamic";
 export const maxDuration = 300;
@@ -66,15 +67,34 @@ export async function GET(request: NextRequest) {
     runId = String(run?.[0]?.id || "");
     const states = await admin(url, key, `user_state?select=user_id,payload&order=updated_at.desc&limit=${USER_LIMIT}`) as Array<{ user_id: string; payload: Json }>;
     const queue = states.flatMap(state => cardsFromPayload(state.payload).filter(scanEligible).map(card => ({ userId: state.user_id, card }))).sort((a, b) => Date.parse(a.card.marketScan?.scannedAt || "1970-01-01") - Date.parse(b.card.marketScan?.scannedAt || "1970-01-01")).slice(0, CARD_LIMIT);
+    const catalystCache = new Map<string, { articles: NewsArticle[]; sources: Record<string, { ok: boolean; count: number; error?: string }> }>();
     let scanned = 0, failed = 0;
     const errors: Array<{ cardId: number; error: string }> = [];
     for (const item of queue) {
       const c = identity(item.card), params = new URLSearchParams({ ...c, provider: "cardapi" });
       try {
+        const playerKey = c.player.toLowerCase();
+        let catalysts = catalystCache.get(playerKey);
+        if (!catalysts) {
+          try { catalysts = await fetchPlayerCatalysts(c.player); } catch { catalysts = { articles: [], sources: {} }; }
+          catalystCache.set(playerKey, catalysts);
+        }
+        if (catalysts.articles.length) {
+          await admin(url, key, "news_events?on_conflict=user_id,client_card_id,event_key", {
+            method: "POST",
+            headers: { Prefer: "resolution=merge-duplicates,return=minimal" },
+            body: JSON.stringify(catalysts.articles.map(article => ({
+              event_key: stableEventKey(c.player, article), user_id: item.userId, client_card_id: Number(item.card.id), player: c.player,
+              title: article.title, url: article.url, domain: article.domain || null, published_at: article.publishedAt || null,
+              last_seen_at: new Date().toISOString(), category: article.category, tone: article.tone, impact: article.impact,
+              provider: article.provider, raw: article,
+            }))),
+          });
+        }
         const response = await fetch(`${request.nextUrl.origin}/api/portfolio-scan?${params}`, { cache: "no-store" });
         const result = await response.json() as Json;
         if (!response.ok || !result.ok) throw new Error(String(result.error || `Scan ${response.status}`));
-        const snapshotRows = await admin(url, key, "market_snapshots", { method: "POST", headers: { Prefer: "return=representation" }, body: JSON.stringify({ run_id: runId || null, user_id: item.userId, client_card_id: Number(item.card.id), player: c.player, year: c.year || null, set_name: c.set || null, card_number: c.cardNumber || null, variant: c.variant || null, grader: c.grader || null, grade: c.grade || null, accepted_count: Number(result.acceptedCount || 0), rejected_count: Number(result.rejectedCount || 0), current_median: result.currentMedian ?? null, recent_median: result.recentMedian ?? null, prior_median: result.priorMedian ?? null, change_7d: result.change7d ?? null, recent_sales: Number(result.recentSales || 0), velocity: result.velocity ?? null, pulse: String(result.pulse || "NOT ENOUGH DATA"), confidence: String(result.confidence || "LOW"), source_status: result.sources || {} }) });
+        const snapshotRows = await admin(url, key, "market_snapshots", { method: "POST", headers: { Prefer: "return=representation" }, body: JSON.stringify({ run_id: runId || null, user_id: item.userId, client_card_id: Number(item.card.id), player: c.player, year: c.year || null, set_name: c.set || null, card_number: c.cardNumber || null, variant: c.variant || null, grader: c.grader || null, grade: c.grade || null, accepted_count: Number(result.acceptedCount || 0), rejected_count: Number(result.rejectedCount || 0), current_median: result.currentMedian ?? null, recent_median: result.recentMedian ?? null, prior_median: result.priorMedian ?? null, change_7d: result.change7d ?? null, recent_sales: Number(result.recentSales || 0), velocity: result.velocity ?? null, pulse: String(result.pulse || "NOT ENOUGH DATA"), confidence: String(result.confidence || "LOW"), source_status: { ...(result.sources as Json || {}), news: { count: catalysts.articles.length, providers: Object.keys(catalysts.sources) } } }) });
         const snapshotId = String(snapshotRows?.[0]?.id || "");
         const sales = Array.isArray(result.acceptedSales) ? result.acceptedSales as Json[] : [];
         if (snapshotId && sales.length) await admin(url, key, "market_sales", { method: "POST", body: JSON.stringify(sales.map(s => ({ snapshot_id: snapshotId, user_id: item.userId, client_card_id: Number(item.card.id), provider: String(s.source || "unknown"), provider_sale_id: String(s.id || "") || null, title: String(s.title || "Untitled sale"), sale_price: s.price ?? null, sale_date: s.date || null, marketplace: String(s.marketplace || "") || null, raw: s }))) });
