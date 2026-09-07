@@ -1,0 +1,149 @@
+"use client";
+
+import { cloudConfigured, readSession, refreshSession } from "../cloud-client";
+
+type CandidateLike = {
+  year: string | null;
+  brand: string | null;
+  line: string | null;
+  format: string | null;
+  category: "Sports" | "Pokémon";
+  canonicalKey: string;
+  confidence: "high" | "medium" | "low";
+  evidenceCount: number;
+  pricedEvidenceCount: number;
+  marketMedian: number | null;
+  lastSaleDate: string | null;
+  sampleTitle: string;
+};
+
+const URL = (process.env.NEXT_PUBLIC_SUPABASE_URL || "").replace(/\/$/, "");
+const KEY = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY || "";
+
+function headers(token: string, prefer?: string) {
+  return {
+    apikey: KEY,
+    Authorization: `Bearer ${token}`,
+    "Content-Type": "application/json",
+    ...(prefer ? { Prefer: prefer } : {}),
+  };
+}
+
+async function rest(path: string, opts: { method?: string; body?: unknown; token: string; prefer?: string } ) {
+  const response = await fetch(`${URL}/rest/v1/${path}`, {
+    method: opts.method || "GET",
+    headers: headers(opts.token, opts.prefer),
+    body: opts.body ? JSON.stringify(opts.body) : undefined,
+    cache: "no-store",
+  });
+  const text = await response.text();
+  const data = text ? JSON.parse(text) : null;
+  if (!response.ok) throw new Error(String(data?.message || data?.hint || `Cloud request failed (${response.status})`));
+  return data;
+}
+
+export async function persistConfirmedSealed(candidate: CandidateLike, provider?: string) {
+  if (!cloudConfigured()) throw new Error("Cloud sync is not configured.");
+  const session = (await refreshSession()) || readSession();
+  if (!session) throw new Error("Sign in to save sealed products across devices.");
+  if (!candidate.format) throw new Error("Exact sealed format is required before saving.");
+
+  const productRows = await rest("sealed_products?on_conflict=user_id,canonical_key", {
+    method: "POST",
+    token: session.access_token,
+    prefer: "resolution=merge-duplicates,return=representation",
+    body: {
+      user_id: session.user.id,
+      canonical_key: candidate.canonicalKey,
+      category: candidate.category,
+      year: candidate.year,
+      brand: candidate.brand,
+      product_line: candidate.line,
+      format: candidate.format,
+      display_name: [candidate.year, candidate.brand, candidate.line, candidate.format].filter(Boolean).join(" "),
+      identity_confidence: candidate.confidence,
+      confirmed_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
+    },
+  });
+  const product = Array.isArray(productRows) ? productRows[0] : null;
+  if (!product?.id) throw new Error("Could not save sealed product identity.");
+
+  await rest("sealed_market_snapshots", {
+    method: "POST",
+    token: session.access_token,
+    prefer: "return=minimal",
+    body: {
+      user_id: session.user.id,
+      sealed_product_id: product.id,
+      scanned_at: new Date().toISOString(),
+      provider: provider || null,
+      market_median: candidate.marketMedian,
+      evidence_count: candidate.evidenceCount,
+      priced_evidence_count: candidate.pricedEvidenceCount,
+      last_sale_date: candidate.lastSaleDate || null,
+      sample_title: candidate.sampleTitle,
+    },
+  });
+  return product;
+}
+
+export type HotSealed = {
+  id: string;
+  displayName: string;
+  category: "Sports" | "Pokémon";
+  format: string;
+  latest: number;
+  prior: number;
+  dollarGain: number;
+  percentGain: number;
+  evidenceCount: number;
+  scannedAt: string;
+};
+
+const WAX_FORMATS = new Set([
+  "Hobby Box", "Jumbo Hobby Box", "Booster Box", "Elite Trainer Box", "Booster Bundle",
+  "Blaster Box", "Mega Box", "Fat Pack", "Hanger Box", "Tin"
+]);
+
+export async function readHotSealed(): Promise<HotSealed[]> {
+  if (!cloudConfigured()) return [];
+  const session = (await refreshSession()) || readSession();
+  if (!session) return [];
+  const [products, snapshots] = await Promise.all([
+    rest("sealed_products?select=id,display_name,category,format&order=updated_at.desc&limit=200", { token: session.access_token }),
+    rest("sealed_market_snapshots?select=sealed_product_id,scanned_at,market_median,evidence_count&order=scanned_at.desc&limit=1000", { token: session.access_token }),
+  ]);
+  const byProduct = new Map<string, any[]>();
+  for (const snap of Array.isArray(snapshots) ? snapshots : []) {
+    const list = byProduct.get(snap.sealed_product_id) || [];
+    list.push(snap);
+    byProduct.set(snap.sealed_product_id, list);
+  }
+  const hot: HotSealed[] = [];
+  for (const product of Array.isArray(products) ? products : []) {
+    if (!WAX_FORMATS.has(product.format)) continue;
+    const history = byProduct.get(product.id) || [];
+    const latest = history.find((s) => Number(s.market_median) > 0);
+    const prior = history.slice(history.indexOf(latest) + 1).find((s) => Number(s.market_median) > 0);
+    if (!latest || !prior) continue;
+    const latestPrice = Number(latest.market_median);
+    const priorPrice = Number(prior.market_median);
+    if (latestPrice > 500 || priorPrice > 500) continue;
+    const dollarGain = latestPrice - priorPrice;
+    if (dollarGain <= 0) continue;
+    hot.push({
+      id: product.id,
+      displayName: product.display_name,
+      category: product.category,
+      format: product.format,
+      latest: latestPrice,
+      prior: priorPrice,
+      dollarGain,
+      percentGain: priorPrice > 0 ? (dollarGain / priorPrice) * 100 : 0,
+      evidenceCount: Number(latest.evidence_count || 0),
+      scannedAt: latest.scanned_at,
+    });
+  }
+  return hot.sort((a, b) => (b.dollarGain * Math.log2(b.evidenceCount + 2)) - (a.dollarGain * Math.log2(a.evidenceCount + 2))).slice(0, 5);
+}
