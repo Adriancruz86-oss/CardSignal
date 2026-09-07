@@ -22,7 +22,7 @@ export default function JustInLayer(){
  const end=useRef<HTMLDivElement|null>(null);
  useEffect(()=>{setReady(true);const h=()=>setOpen(true);window.addEventListener("cardsignal:open-just-in",h);return()=>window.removeEventListener("cardsignal:open-just-in",h)},[]);
  useEffect(()=>{if(open)fetch("/api/copilot",{cache:"no-store"}).then(r=>r.json()).then(j=>setConfigured(Boolean(j.configured))).catch(()=>setConfigured(false))},[open]);
- useEffect(()=>end.current?.scrollIntoView({behavior:"smooth"}),[messages,busy]);
+ useEffect(()=>{end.current?.scrollIntoView({behavior:"smooth"})},[messages,busy]);
  const ask=async(preset?:string)=>{const question=(preset||input).trim();if(!question||busy)return;setBusy(true);setError("");setInput("");setMessages(v=>[...v,{id:`u${Date.now()}`,role:"user",text:question}]);try{const session=await refreshSession();if(!session)throw new Error("Sign in to ask Just-In about your private collection.");const response=await fetch("/api/copilot",{method:"POST",headers:{"Content-Type":"application/json",Authorization:`Bearer ${session.access_token}`},body:JSON.stringify({message:question,selectedCardId:currentCard()}),cache:"no-store"});const json=await response.json();if(!response.ok||!json.ok)throw new Error(json.error||"Just-In could not answer.");setMessages(v=>[...v,{id:`a${Date.now()}`,role:"assistant",text:json.result.answer,reply:json.result}])}catch(e){setError(e instanceof Error?e.message:"Just-In could not answer.")}finally{setBusy(false)}};
  const submit=(e:FormEvent)=>{e.preventDefault();void ask()};
  if(!ready)return null;
