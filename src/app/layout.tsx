@@ -54,6 +54,7 @@ import CloudSyncLayer from "./cloud-sync-layer";
 import DataIntegrityV3Layer from "./data-integrity-v3-layer";
 import SignalIntelligenceLayer from "./signal-intelligence-layer";
 import CuratedBenchmarkLayer from "./curated-benchmark-layer";
+import JustInLayer from "./just-in-layer";
 import "./globals.css";
 import "./asset-overrides.css";
 import "./live-market-click-fix.css";
@@ -137,6 +138,7 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
         <DataIntegrityV3Layer />
         <SignalIntelligenceLayer />
         <CuratedBenchmarkLayer />
+        <JustInLayer />
         <CloudAuthLayer />
       </body>
     </html>

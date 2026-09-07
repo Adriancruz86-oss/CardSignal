@@ -5,6 +5,7 @@ import { createPortal } from "react-dom";
 
 type Tool={label:string;selector:string;icon:string};
 const CORE:Tool[]=[
+ {label:"Just-In",selector:".cs-justin-launch",icon:"●"},
  {label:"Portfolio Pulse",selector:".cs-pulse-launch",icon:"◉"},
  {label:"Live Market",selector:".cs-live-launch",icon:"◎"},
  {label:"Catalysts",selector:".cs-catalyst-launch",icon:"✦"},
