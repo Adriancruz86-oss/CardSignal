@@ -28,6 +28,20 @@ type Listing = {
 };
 
 const VARIANTS = [
+  "rainbow foil",
+  "gold foil",
+  "foilboard",
+  "vintage stock",
+  "independence day",
+  "mother's day",
+  "father's day",
+  "memorial day",
+  "advanced stats",
+  "image variation",
+  "photo variation",
+  "short print",
+  "ssp",
+  "team color border",
   "logofractor",
   "refractor",
   "x-fractor",
@@ -125,6 +139,17 @@ function gradeMatches(c: Canonical, title: string) {
     new RegExp(`\\b${alias}\\s*${escapedGrade}(?:\\.0)?\\b`, "i").test(t),
   );
 }
+function hasUnexpectedVariant(c: Canonical, title: string) {
+  const serial =
+    /\b\d{1,3}\s*\/\s*(?:1|5|10|15|20|25|35|49|50|75|99|100|149|150|199|250|299|499)\b/;
+  if (serial.test(normalize(title))) return !serial.test(normalize(c.variant));
+  return VARIANTS.some(
+    (variant) =>
+      phraseIn(title, variant) &&
+      !phraseIn(c.setName, variant) &&
+      !phraseIn(c.variant, variant),
+  );
+}
 function matches(c: Canonical, title: string) {
   const t = normalize(title);
   if (!gradeMatches(c, title)) return false;
@@ -146,7 +171,7 @@ function matches(c: Canonical, title: string) {
     if (!n || normalize(n) !== normalize(c.cardNumber)) return false;
   }
   if (c.variant && !phraseIn(t, c.variant)) return false;
-  if (!c.variant && VARIANTS.some((v) => phraseIn(title, v))) return false;
+  if (hasUnexpectedVariant(c, title)) return false;
   return true;
 }
 

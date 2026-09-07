@@ -19,6 +19,20 @@ type Canonical = {
 };
 
 const VARIANTS = [
+  "rainbow foil",
+  "gold foil",
+  "foilboard",
+  "vintage stock",
+  "independence day",
+  "mother's day",
+  "father's day",
+  "memorial day",
+  "advanced stats",
+  "image variation",
+  "photo variation",
+  "short print",
+  "ssp",
+  "team color border",
   "logofractor",
   "refractor",
   "x-fractor",
@@ -113,6 +127,17 @@ function gradeMatch(c: Canonical, title: string) {
   const escaped = grade.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
   return new RegExp(`\\b${expected}\\s*${escaped}(?:\\.0)?\\b`, "i").test(t);
 }
+function hasUnexpectedVariant(c: Canonical, title: string) {
+  const serial =
+    /\b\d{1,3}\s*\/\s*(?:1|5|10|15|20|25|35|49|50|75|99|100|149|150|199|250|299|499)\b/;
+  if (serial.test(normalize(title))) return !serial.test(normalize(c.variant));
+  return VARIANTS.some(
+    (variant) =>
+      phraseIn(title, variant) &&
+      !phraseIn(c.setName, variant) &&
+      !phraseIn(c.variant, variant),
+  );
+}
 function exactMatch(c: Canonical, s: Sale) {
   const t = normalize(s.title);
   if (LOT_WORDS.some((x) => phraseIn(t, x))) return false;
@@ -133,7 +158,7 @@ function exactMatch(c: Canonical, s: Sale) {
     if (!n || normalize(n) !== normalize(c.cardNumber)) return false;
   }
   if (c.variant && !phraseIn(t, c.variant)) return false;
-  if (!c.variant && VARIANTS.some((v) => phraseIn(s.title, v))) return false;
+  if (hasUnexpectedVariant(c, s.title)) return false;
   return gradeMatch(c, s.title);
 }
 function dedupe(sales: Sale[]) {
