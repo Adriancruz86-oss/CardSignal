@@ -1,13 +1,77 @@
 import { NextRequest, NextResponse } from "next/server";
 
-export const dynamic="force-dynamic";
-export const maxDuration=300;
+export const dynamic = "force-dynamic";
+export const maxDuration = 300;
 
-type Product={id:string;user_id:string;canonical_key:string;category:"Sports"|"Pokémon";display_name:string;image_url?:string|null};
-type Candidate={canonicalKey:string;marketMedian:number|null;evidenceCount:number;pricedEvidenceCount:number;lastSaleDate:string|null;sampleTitle:string;imageUrl?:string;imageSource?:string};
-type BestOffer={price:number;shipping:number;deliveredPrice:number;url:string;source:string;seller:string;imageUrl?:string};
+type Product = {
+  id: string;
+  user_id: string;
+  canonical_key: string;
+  category: "Sports" | "Pokémon";
+  display_name: string;
+  image_url?: string | null;
+  msrp?: number | null;
+  retail_in_stock?: boolean | null;
+};
+type Candidate = {
+  canonicalKey: string;
+  marketMedian: number | null;
+  evidenceCount: number;
+  pricedEvidenceCount: number;
+  lastSaleDate: string | null;
+  sampleTitle: string;
+  imageUrl?: string;
+  imageSource?: string;
+};
+type BestOffer = { price:number; shipping:number; deliveredPrice:number; url:string; source:string; seller:string; imageUrl?:string };
+type RetailOffer = { source:string; title:string; price:number; shipping:number; deliveredPrice:number; url:string; inStock:boolean; sourceType:"retailer"|"marketplace" };
+
 function cfg(){return{url:(process.env.NEXT_PUBLIC_SUPABASE_URL||"").replace(/\/$/,""),key:process.env.SUPABASE_SECRET_KEY||""}}
 function authorized(req:NextRequest){const secret=process.env.CRON_SECRET||"";return Boolean(secret&&req.headers.get("authorization")===`Bearer ${secret}`)}
 async function admin(url:string,key:string,path:string,init:RequestInit={}){const r=await fetch(`${url}/rest/v1/${path}`,{...init,headers:{apikey:key,"Content-Type":"application/json",...(init.headers||{})},cache:"no-store"});const raw=await r.text();const data=raw?JSON.parse(raw):null;if(!r.ok)throw new Error(String(data?.message||data?.hint||`Supabase ${r.status}`));return data}
 
-export async function GET(request:NextRequest){if(!authorized(request))return NextResponse.json({ok:false,error:"Unauthorized"},{status:401});const{url,key}=cfg();if(!url||!key)return NextResponse.json({ok:false,error:"Sealed scheduled scans require Supabase admin configuration."},{status:503});try{const products=await admin(url,key,"sealed_products?select=id,user_id,canonical_key,category,display_name,image_url&order=last_scanned_at.asc.nullsfirst,updated_at.asc&limit=40") as Product[];let scanned=0,failed=0,unchanged=0;const errors:Array<{product:string;error:string}>=[];for(const product of products){try{const qs=new URLSearchParams({q:product.display_name,category:product.category});const [r,buyR]=await Promise.all([fetch(`${request.nextUrl.origin}/api/sealed-discovery?${qs}`,{cache:"no-store"}),fetch(`${request.nextUrl.origin}/api/sealed-best-offer?q=${encodeURIComponent(product.display_name)}`,{cache:"no-store"}).catch(()=>null)]);const data=await r.json() as {ok?:boolean;provider?:string;candidates?:Candidate[];error?:string};if(!r.ok||!data.ok)throw new Error(data.error||`Discovery ${r.status}`);const buyData=buyR?await buyR.json().catch(()=>null) as {ok?:boolean;bestOffer?:BestOffer|null;checkedAt?:string}|null:null;const candidate=(data.candidates||[]).find(c=>c.canonicalKey===product.canonical_key);const now=new Date().toISOString();const best=buyData?.ok?buyData.bestOffer:null;const offerPatch=best?{best_offer_price:best.price,best_offer_shipping:best.shipping,best_offer_url:best.url,best_offer_source:best.source,best_offer_seller:best.seller,best_offer_checked_at:buyData?.checkedAt||now}:{};if(!candidate){unchanged++;await admin(url,key,`sealed_products?id=eq.${product.id}`,{method:"PATCH",headers:{Prefer:"return=minimal"},body:JSON.stringify({last_scanned_at:now,...offerPatch})});continue}await admin(url,key,"sealed_market_snapshots",{method:"POST",headers:{Prefer:"return=minimal"},body:JSON.stringify({user_id:product.user_id,sealed_product_id:product.id,scanned_at:now,provider:data.provider||null,market_median:candidate.marketMedian,evidence_count:candidate.evidenceCount,priced_evidence_count:candidate.pricedEvidenceCount,last_sale_date:candidate.lastSaleDate||null,sample_title:candidate.sampleTitle})});await admin(url,key,`sealed_products?id=eq.${product.id}`,{method:"PATCH",headers:{Prefer:"return=minimal"},body:JSON.stringify({last_scanned_at:now,updated_at:now,...offerPatch,...(!product.image_url&&(candidate.imageUrl||best?.imageUrl)?{image_url:candidate.imageUrl||best?.imageUrl,image_source:candidate.imageSource||best?.source||data.provider||"market"}:{})})});scanned++}catch(error){failed++;errors.push({product:product.display_name,error:error instanceof Error?error.message:"Scan failed"})}}return NextResponse.json({ok:failed===0||scanned>0,productsSeen:products.length,scanned,unchanged,failed,errors:errors.slice(0,10),scannedAt:new Date().toISOString()})}catch(error){return NextResponse.json({ok:false,error:error instanceof Error?error.message:"Scheduled sealed scan failed"},{status:500})}}
+export async function GET(request:NextRequest){
+  if(!authorized(request)) return NextResponse.json({ok:false,error:"Unauthorized"},{status:401});
+  const {url,key}=cfg();
+  if(!url||!key) return NextResponse.json({ok:false,error:"Sealed scheduled scans require Supabase admin configuration."},{status:503});
+  try{
+    const products=await admin(url,key,"sealed_products?select=id,user_id,canonical_key,category,display_name,image_url,msrp,retail_in_stock&order=last_scanned_at.asc.nullsfirst,updated_at.asc&limit=40") as Product[];
+    let scanned=0,failed=0,unchanged=0,restocks=0;
+    const errors:Array<{product:string;error:string}>=[];
+    for(const product of products){
+      try{
+        const qs=new URLSearchParams({q:product.display_name,category:product.category});
+        const retailQs=new URLSearchParams({q:product.display_name});
+        if(product.msrp!=null) retailQs.set("msrp",String(product.msrp));
+        const [r,buyR,retailR]=await Promise.all([
+          fetch(`${request.nextUrl.origin}/api/sealed-discovery?${qs}`,{cache:"no-store"}),
+          fetch(`${request.nextUrl.origin}/api/sealed-best-offer?q=${encodeURIComponent(product.display_name)}`,{cache:"no-store"}).catch(()=>null),
+          fetch(`${request.nextUrl.origin}/api/sealed-retail-radar?${retailQs}`,{cache:"no-store"}).catch(()=>null),
+        ]);
+        const data=await r.json() as {ok?:boolean;provider?:string;candidates?:Candidate[];error?:string};
+        if(!r.ok||!data.ok) throw new Error(data.error||`Discovery ${r.status}`);
+        const buyData=buyR?await buyR.json().catch(()=>null) as {ok?:boolean;bestOffer?:BestOffer|null;checkedAt?:string}|null:null;
+        const retailData=retailR?await retailR.json().catch(()=>null) as {ok?:boolean;liveOffers?:RetailOffer[];bestLiveOffer?:RetailOffer|null;checkedAt?:string}|null:null;
+        const candidate=(data.candidates||[]).find(c=>c.canonicalKey===product.canonical_key);
+        const now=new Date().toISOString();
+        const best=buyData?.ok?buyData.bestOffer:null;
+        const offerPatch=best?{best_offer_price:best.price,best_offer_shipping:best.shipping,best_offer_url:best.url,best_offer_source:best.source,best_offer_seller:best.seller,best_offer_checked_at:buyData?.checkedAt||now}:{};
+        const retailerOffers=(retailData?.ok?retailData.liveOffers:[])||[];
+        const verifiedRetailers=retailerOffers.filter(o=>o.sourceType==="retailer"&&o.inStock);
+        const bestRetail=[...verifiedRetailers].sort((a,b)=>a.deliveredPrice-b.deliveredPrice)[0]||null;
+        const retailInStock=verifiedRetailers.length>0;
+        const restocked=product.retail_in_stock===false&&retailInStock;
+        if(restocked) restocks++;
+        if(retailData?.ok&&retailerOffers.length){
+          await admin(url,key,"sealed_retail_snapshots",{method:"POST",headers:{Prefer:"return=minimal"},body:JSON.stringify(retailerOffers.map(o=>({user_id:product.user_id,sealed_product_id:product.id,checked_at:retailData.checkedAt||now,source:o.source,source_type:o.sourceType,in_stock:o.inStock,item_price:o.price,shipping:o.shipping,delivered_price:o.deliveredPrice,url:o.url,title:o.title}))) });
+        }
+        const retailPatch={retail_in_stock:retailInStock,best_retail_price:bestRetail?.deliveredPrice??null,best_retail_url:bestRetail?.url??null,best_retail_source:bestRetail?.source??null,best_retail_checked_at:retailData?.checkedAt||now,...(restocked?{last_restock_at:now}:{})};
+        if(!candidate){unchanged++;await admin(url,key,`sealed_products?id=eq.${product.id}`,{method:"PATCH",headers:{Prefer:"return=minimal"},body:JSON.stringify({last_scanned_at:now,...offerPatch,...retailPatch})});continue}
+        await admin(url,key,"sealed_market_snapshots",{method:"POST",headers:{Prefer:"return=minimal"},body:JSON.stringify({user_id:product.user_id,sealed_product_id:product.id,scanned_at:now,provider:data.provider||null,market_median:candidate.marketMedian,evidence_count:candidate.evidenceCount,priced_evidence_count:candidate.pricedEvidenceCount,last_sale_date:candidate.lastSaleDate||null,sample_title:candidate.sampleTitle})});
+        await admin(url,key,`sealed_products?id=eq.${product.id}`,{method:"PATCH",headers:{Prefer:"return=minimal"},body:JSON.stringify({last_scanned_at:now,updated_at:now,...offerPatch,...retailPatch,...(!product.image_url&&(candidate.imageUrl||best?.imageUrl)?{image_url:candidate.imageUrl||best?.imageUrl,image_source:candidate.imageSource||best?.source||data.provider||"market"}:{})})});
+        scanned++;
+      }catch(error){failed++;errors.push({product:product.display_name,error:error instanceof Error?error.message:"Scan failed"})}
+    }
+    return NextResponse.json({ok:failed===0||scanned>0,productsSeen:products.length,scanned,unchanged,failed,restocks,errors:errors.slice(0,10),scannedAt:new Date().toISOString()});
+  }catch(error){return NextResponse.json({ok:false,error:error instanceof Error?error.message:"Scheduled sealed scan failed"},{status:500})}
+}
