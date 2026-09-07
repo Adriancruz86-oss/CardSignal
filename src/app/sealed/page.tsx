@@ -3,14 +3,12 @@
 import LiveSealedDiscovery from "./live-sealed-discovery";
 import HotRightNow from "./hot-right-now";
 import SealedOwnership from "./sealed-ownership";
-import SealedVisualShelf from "./sealed-visual-shelf";
 import "./sealed.css";
 
 const sections = [
   ["hot", "Hot right now"],
   ["discover", "Discover"],
   ["portfolio", "My sealed"],
-  ["catalog", "Catalog"],
 ] as const;
 
 export default function SealedPage() {
@@ -59,14 +57,9 @@ export default function SealedPage() {
         <LiveSealedDiscovery />
       </section>
 
-      <section id="portfolio" className="sealed-section-block">
+      <section id="portfolio" className="sealed-section-block sealed-section-last">
         <div className="sealed-section-label"><span>MY SEALED</span><p>See what you own, what you paid, and whether the position is worth adding to, holding, or trimming.</p></div>
         <SealedOwnership />
-      </section>
-
-      <section id="catalog" className="sealed-section-block sealed-section-last">
-        <div className="sealed-section-label"><span>CATALOG</span><p>Tracked wax with product imagery and current product identity.</p></div>
-        <SealedVisualShelf />
       </section>
     </main>
   );
