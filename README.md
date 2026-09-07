@@ -1,5 +1,11 @@
 This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
 
+## CardSignal Copilot
+
+The private server-side Copilot route uses Google Gemini without exposing its API key to the browser. Add `GEMINI_API_KEY` to `.env.local` and to the Vercel project's environment variables. Optionally set `GEMINI_MODEL`; the default is `gemini-2.5-flash`.
+
+The route authenticates the current Supabase user, reads only that user's cloud-synced collection, limits the collection context, and returns structured guidance plus proposed actions. It does not execute mutations automatically.
+
 ## Getting Started
 
 First, run the development server:
