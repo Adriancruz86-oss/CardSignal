@@ -32,10 +32,11 @@ export async function writeCloudState(token:string,userId:string,payload:Record<
 
 export async function readCardIntelligence(token:string,cardId:number){
  const id=encodeURIComponent(String(cardId));
- const [snapshots,news,signals]=await Promise.all([
+ const [snapshots,news,signals,supply]=await Promise.all([
   rest(`market_snapshots?client_card_id=eq.${id}&select=id,scanned_at,accepted_count,rejected_count,current_median,change_7d,recent_sales,velocity,pulse,confidence,source_status&order=scanned_at.desc&limit=20`,{token}),
   rest(`news_events?client_card_id=eq.${id}&select=id,title,url,domain,published_at,first_seen_at,last_seen_at,category,tone,impact,provider&order=published_at.desc.nullslast&limit=30`,{token}),
   rest(`signal_events?client_card_id=eq.${id}&select=id,created_at,signal_type,confidence,score,explanation,evidence&order=created_at.desc&limit=20`,{token}),
+  rest(`supply_snapshots?client_card_id=eq.${id}&select=id,scanned_at,provider,identity_confidence,raw_total,fetched_count,accepted_count,rejected_count,lowest_ask,median_ask,highest_ask,inventory_delta_pct,median_ask_delta_pct,ask_vs_sold_pct,new_listing_count,disappeared_listing_count,supply_state,listing_sample&order=scanned_at.desc&limit=20`,{token}),
  ]);
- return{snapshots:Array.isArray(snapshots)?snapshots:[],news:Array.isArray(news)?news:[],signals:Array.isArray(signals)?signals:[]};
+ return{snapshots:Array.isArray(snapshots)?snapshots:[],news:Array.isArray(news)?news:[],signals:Array.isArray(signals)?signals:[],supply:Array.isArray(supply)?supply:[]};
 }

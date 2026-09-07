@@ -145,6 +145,35 @@ create table if not exists public.news_events (
   unique (user_id, client_card_id, event_key)
 );
 
+create table if not exists public.supply_snapshots (
+  id uuid primary key default gen_random_uuid(),
+  run_id uuid references public.market_scan_runs(id) on delete set null,
+  user_id uuid not null references auth.users(id) on delete cascade,
+  client_card_id bigint not null,
+  player text not null,
+  scanned_at timestamptz not null default now(),
+  provider text not null default 'eBay Browse API',
+  query text,
+  identity_confidence text not null default 'LOW',
+  matching_version integer not null default 3,
+  raw_total integer not null default 0,
+  fetched_count integer not null default 0,
+  accepted_count integer not null default 0,
+  rejected_count integer not null default 0,
+  lowest_ask numeric,
+  median_ask numeric,
+  highest_ask numeric,
+  inventory_delta_pct numeric,
+  median_ask_delta_pct numeric,
+  ask_vs_sold_pct numeric,
+  new_listing_count integer,
+  disappeared_listing_count integer,
+  supply_state text not null default 'BASELINE',
+  listing_ids jsonb not null default '[]'::jsonb,
+  listing_sample jsonb not null default '[]'::jsonb,
+  source_status jsonb not null default '{}'::jsonb
+);
+
 create index if not exists market_snapshots_user_card_time_idx on public.market_snapshots(user_id, client_card_id, scanned_at desc);
 create index if not exists market_snapshots_run_id_idx on public.market_snapshots(run_id);
 create index if not exists market_sales_snapshot_idx on public.market_sales(snapshot_id);
@@ -153,12 +182,15 @@ create index if not exists signal_events_user_card_time_idx on public.signal_eve
 create index if not exists signal_events_snapshot_id_idx on public.signal_events(snapshot_id);
 create index if not exists news_events_user_card_time_idx on public.news_events(user_id, client_card_id, published_at desc);
 create index if not exists news_events_player_time_idx on public.news_events(player, published_at desc);
+create index if not exists supply_snapshots_user_card_time_idx on public.supply_snapshots(user_id, client_card_id, scanned_at desc);
+create index if not exists supply_snapshots_run_id_idx on public.supply_snapshots(run_id);
 
 alter table public.market_scan_runs enable row level security;
 alter table public.market_snapshots enable row level security;
 alter table public.market_sales enable row level security;
 alter table public.signal_events enable row level security;
 alter table public.news_events enable row level security;
+alter table public.supply_snapshots enable row level security;
 
 drop policy if exists "market_snapshots_select_own" on public.market_snapshots;
 create policy "market_snapshots_select_own" on public.market_snapshots for select to authenticated
@@ -172,7 +204,10 @@ using ((select auth.uid()) = user_id);
 drop policy if exists "news_events_select_own" on public.news_events;
 create policy "news_events_select_own" on public.news_events for select to authenticated
 using ((select auth.uid()) = user_id);
+drop policy if exists "supply_snapshots_select_own" on public.supply_snapshots;
+create policy "supply_snapshots_select_own" on public.supply_snapshots for select to authenticated
+using ((select auth.uid()) = user_id);
 
-grant select on public.market_snapshots, public.market_sales, public.signal_events, public.news_events to authenticated;
-grant all on public.market_scan_runs, public.market_snapshots, public.market_sales, public.signal_events, public.news_events to service_role;
+grant select on public.market_snapshots, public.market_sales, public.signal_events, public.news_events, public.supply_snapshots to authenticated;
+grant all on public.market_scan_runs, public.market_snapshots, public.market_sales, public.signal_events, public.news_events, public.supply_snapshots to service_role;
 grant usage, select on sequence public.market_sales_id_seq, public.news_events_id_seq to service_role;

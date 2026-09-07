@@ -55,6 +55,17 @@ function authorized(request: NextRequest) {
   const secret = process.env.CRON_SECRET || "";
   return Boolean(secret && request.headers.get("authorization") === `Bearer ${secret}`);
 }
+function percentChange(current: number | null, previous: number | null) {
+  if (current == null || previous == null || previous === 0) return null;
+  return Number((((current - previous) / previous) * 100).toFixed(1));
+}
+function supplyState(confidence: string, historyCount: number, inventoryDelta: number | null) {
+  if (confidence === "LOW") return "IDENTITY AMBIGUOUS";
+  if (historyCount < 2 || inventoryDelta == null) return "BASELINE";
+  if (inventoryDelta <= -15) return "SUPPLY TIGHTENING";
+  if (inventoryDelta >= 15) return "SUPPLY RISING";
+  return "NEUTRAL";
+}
 
 export async function GET(request: NextRequest) {
   if (!authorized(request)) return NextResponse.json({ ok: false, error: "Unauthorized" }, { status: 401 });
@@ -91,10 +102,27 @@ export async function GET(request: NextRequest) {
             }))),
           });
         }
-        const response = await fetch(`${request.nextUrl.origin}/api/portfolio-scan?${params}`, { cache: "no-store" });
+        const supplyParams = new URLSearchParams(c);
+        const [response, supplyResponse] = await Promise.all([
+          fetch(`${request.nextUrl.origin}/api/portfolio-scan?${params}`, { cache: "no-store" }),
+          fetch(`${request.nextUrl.origin}/api/supply-watch?${supplyParams}`, { cache: "no-store" }).catch(() => null),
+        ]);
         const result = await response.json() as Json;
         if (!response.ok || !result.ok) throw new Error(String(result.error || `Scan ${response.status}`));
-        const snapshotRows = await admin(url, key, "market_snapshots", { method: "POST", headers: { Prefer: "return=representation" }, body: JSON.stringify({ run_id: runId || null, user_id: item.userId, client_card_id: Number(item.card.id), player: c.player, year: c.year || null, set_name: c.set || null, card_number: c.cardNumber || null, variant: c.variant || null, grader: c.grader || null, grade: c.grade || null, accepted_count: Number(result.acceptedCount || 0), rejected_count: Number(result.rejectedCount || 0), current_median: result.currentMedian ?? null, recent_median: result.recentMedian ?? null, prior_median: result.priorMedian ?? null, change_7d: result.change7d ?? null, recent_sales: Number(result.recentSales || 0), velocity: result.velocity ?? null, pulse: String(result.pulse || "NOT ENOUGH DATA"), confidence: String(result.confidence || "LOW"), source_status: { ...(result.sources as Json || {}), news: { count: catalysts.articles.length, providers: Object.keys(catalysts.sources) } } }) });
+        let supply: Json | null = null, supplyError = "";
+        if (supplyResponse) {
+          supply = await supplyResponse.json().catch(() => null) as Json | null;
+          if (!supplyResponse.ok || !supply?.ok) supplyError = String(supply?.error || `Supply ${supplyResponse.status}`);
+        } else supplyError = "Supply request failed";
+        if (supply?.ok) {
+          const priorRows = await admin(url, key, `supply_snapshots?user_id=eq.${encodeURIComponent(item.userId)}&client_card_id=eq.${Number(item.card.id)}&select=accepted_count,median_ask,listing_ids&order=scanned_at.desc&limit=1`) as Array<{ accepted_count: number; median_ask: number | null; listing_ids: string[] }>;
+          const prior = priorRows?.[0], currentIds = (Array.isArray(supply.listings) ? supply.listings as Json[] : []).map(row => String(row.id || "")).filter(Boolean), priorIds = Array.isArray(prior?.listing_ids) ? prior.listing_ids.map(String) : [];
+          const accepted = Number(supply.acceptedCount || 0), medianAsk = supply.medianAsk == null ? null : Number(supply.medianAsk), inventoryDelta = percentChange(accepted, prior ? Number(prior.accepted_count) : null), askDelta = percentChange(medianAsk, prior?.median_ask == null ? null : Number(prior.median_ask)), soldMedian = result.currentMedian == null ? null : Number(result.currentMedian), askVsSold = percentChange(medianAsk, soldMedian);
+          await admin(url, key, "supply_snapshots", { method: "POST", headers: { Prefer: "return=minimal" }, body: JSON.stringify({
+            run_id: runId || null, user_id: item.userId, client_card_id: Number(item.card.id), player: c.player, scanned_at: supply.scannedAt || new Date().toISOString(), provider: String(supply.provider || "eBay Browse API"), query: String(supply.query || ""), identity_confidence: String(supply.identityConfidence || "LOW"), matching_version: Number(supply.matchingVersion || 3), raw_total: Number(supply.rawTotal || 0), fetched_count: Number(supply.fetchedCount || 0), accepted_count: accepted, rejected_count: Number(supply.rejectedCount || 0), lowest_ask: supply.lowestAsk ?? null, median_ask: medianAsk, highest_ask: supply.highestAsk ?? null, inventory_delta_pct: inventoryDelta, median_ask_delta_pct: askDelta, ask_vs_sold_pct: askVsSold, new_listing_count: prior ? currentIds.filter(id => !priorIds.includes(id)).length : null, disappeared_listing_count: prior ? priorIds.filter(id => !currentIds.includes(id)).length : null, supply_state: supplyState(String(supply.identityConfidence || "LOW"), prior ? 2 : 1, inventoryDelta), listing_ids: currentIds, listing_sample: (supply.listings as Json[] || []).slice(0, 20), source_status: { ok: true }
+          }) });
+        }
+        const snapshotRows = await admin(url, key, "market_snapshots", { method: "POST", headers: { Prefer: "return=representation" }, body: JSON.stringify({ run_id: runId || null, user_id: item.userId, client_card_id: Number(item.card.id), player: c.player, year: c.year || null, set_name: c.set || null, card_number: c.cardNumber || null, variant: c.variant || null, grader: c.grader || null, grade: c.grade || null, accepted_count: Number(result.acceptedCount || 0), rejected_count: Number(result.rejectedCount || 0), current_median: result.currentMedian ?? null, recent_median: result.recentMedian ?? null, prior_median: result.priorMedian ?? null, change_7d: result.change7d ?? null, recent_sales: Number(result.recentSales || 0), velocity: result.velocity ?? null, pulse: String(result.pulse || "NOT ENOUGH DATA"), confidence: String(result.confidence || "LOW"), source_status: { ...(result.sources as Json || {}), news: { count: catalysts.articles.length, providers: Object.keys(catalysts.sources) }, supply: supply?.ok ? { ok: true, acceptedCount: supply.acceptedCount } : { ok: false, error: supplyError } } }) });
         const snapshotId = String(snapshotRows?.[0]?.id || "");
         const sales = Array.isArray(result.acceptedSales) ? result.acceptedSales as Json[] : [];
         if (snapshotId && sales.length) await admin(url, key, "market_sales", { method: "POST", body: JSON.stringify(sales.map(s => ({ snapshot_id: snapshotId, user_id: item.userId, client_card_id: Number(item.card.id), provider: String(s.source || "unknown"), provider_sale_id: String(s.id || "") || null, title: String(s.title || "Untitled sale"), sale_price: s.price ?? null, sale_date: s.date || null, marketplace: String(s.marketplace || "") || null, raw: s }))) });
