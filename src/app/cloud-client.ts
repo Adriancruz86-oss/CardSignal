@@ -29,3 +29,13 @@ export async function getProfile(token:string,userId:string){const rows=await re
 export async function ensureProfile(token:string,user:{id:string;email?:string},username?:string){const current=await getProfile(token,user.id);if(current)return current;const row={id:user.id,email:user.email||"",username:(username||user.email?.split("@")[0]||"collector").slice(0,32)};const rows=await rest("profiles?on_conflict=id",{method:"POST",body:row,token,prefer:"resolution=merge-duplicates,return=representation"});return Array.isArray(rows)?rows[0]||row:row}
 export async function readCloudState(token:string){const rows=await rest("user_state?select=payload,updated_at&limit=1",{token});return Array.isArray(rows)?rows[0]||null:null}
 export async function writeCloudState(token:string,userId:string,payload:Record<string,unknown>){return rest("user_state?on_conflict=user_id",{method:"POST",body:{user_id:userId,payload,updated_at:new Date().toISOString()},token,prefer:"resolution=merge-duplicates,return=minimal"})}
+
+export async function readCardIntelligence(token:string,cardId:number){
+ const id=encodeURIComponent(String(cardId));
+ const [snapshots,news,signals]=await Promise.all([
+  rest(`market_snapshots?client_card_id=eq.${id}&select=id,scanned_at,accepted_count,rejected_count,current_median,change_7d,recent_sales,velocity,pulse,confidence,source_status&order=scanned_at.desc&limit=20`,{token}),
+  rest(`news_events?client_card_id=eq.${id}&select=id,title,url,domain,published_at,first_seen_at,last_seen_at,category,tone,impact,provider&order=published_at.desc.nullslast&limit=30`,{token}),
+  rest(`signal_events?client_card_id=eq.${id}&select=id,created_at,signal_type,confidence,score,explanation,evidence&order=created_at.desc&limit=20`,{token}),
+ ]);
+ return{snapshots:Array.isArray(snapshots)?snapshots:[],news:Array.isArray(news)?news:[],signals:Array.isArray(signals)?signals:[]};
+}

@@ -52,6 +52,7 @@ import SellPrepLayer from "./sell-prep-layer";
 import CloudAuthLayer from "./cloud-auth-layer";
 import CloudSyncLayer from "./cloud-sync-layer";
 import DataIntegrityV3Layer from "./data-integrity-v3-layer";
+import SignalIntelligenceLayer from "./signal-intelligence-layer";
 import "./globals.css";
 import "./asset-overrides.css";
 import "./live-market-click-fix.css";
@@ -133,6 +134,7 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
         <SellPrepLayer />
         <CloudSyncLayer />
         <DataIntegrityV3Layer />
+        <SignalIntelligenceLayer />
         <CloudAuthLayer />
       </body>
     </html>
