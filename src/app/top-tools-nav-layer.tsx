@@ -138,21 +138,28 @@ export default function TopToolsNavLayer() {
             <i>▤</i>Research Lab <b>{labOpen ? "▲" : "▼"}</b>
           </button>
           {labOpen && (
-            <div className="cs-lab-menu">
-              <div>
-                <span>VALIDATION & RESEARCH</span>
-                <small>
-                  Advanced tools are kept here so the everyday workflow stays
-                  focused.
-                </small>
+            <>
+              <button
+                className="cs-lab-scrim"
+                aria-label="Close Research Lab menu"
+                onClick={() => setLabOpen(false)}
+              />
+              <div className="cs-lab-menu">
+                <div>
+                  <span>VALIDATION & RESEARCH</span>
+                  <small>
+                    Advanced tools are kept here so the everyday workflow stays
+                    focused.
+                  </small>
+                </div>
+                {LAB.map((t) => (
+                  <button key={t.label} onClick={() => openTool(t.selector)}>
+                    <i>{t.icon}</i>
+                    <span>{t.label}</span>
+                  </button>
+                ))}
               </div>
-              {LAB.map((t) => (
-                <button key={t.label} onClick={() => openTool(t.selector)}>
-                  <i>{t.icon}</i>
-                  <span>{t.label}</span>
-                </button>
-              ))}
-            </div>
+            </>
           )}
         </div>
       </div>
@@ -246,6 +253,22 @@ export default function TopToolsNavLayer() {
           position: relative;
           margin-left: auto;
         }
+        #cardsignal-top-tools:has(.cs-lab-menu) {
+          z-index: 2100;
+        }
+        .cs-lab-scrim {
+          position: fixed;
+          inset: 0;
+          z-index: 0;
+          width: 100vw;
+          height: 100dvh;
+          padding: 0;
+          border: 0;
+          border-radius: 0;
+          background: rgba(0, 7, 12, 0.66);
+          backdrop-filter: blur(3px);
+          cursor: default;
+        }
         .cs-lab-wrap > button.active {
           border-color: rgba(102, 224, 255, 0.34);
           color: #d8f7ff;
@@ -256,6 +279,7 @@ export default function TopToolsNavLayer() {
         }
         .cs-lab-menu {
           position: absolute;
+          z-index: 1;
           right: 0;
           top: 36px;
           width: 430px;
@@ -335,9 +359,9 @@ export default function TopToolsNavLayer() {
             position: fixed;
             left: 16px;
             right: 16px;
-            top: 104px;
+            top: 112px;
             width: auto;
-            max-height: 70vh;
+            max-height: calc(100dvh - 128px);
             overflow: auto;
           }
           .cs-top-tools-label {

@@ -401,6 +401,13 @@ export default function CloudAuthLayer() {
           box-shadow: 0 12px 30px rgba(0, 0, 0, 0.35);
           color: #dff8ea;
         }
+        body:has(.cs-modal-backdrop) .cs-account-chip,
+        body:has(.cs-safe-portfolio-backdrop) .cs-account-chip,
+        body:has([class*="-backdrop"] section) .cs-account-chip,
+        body:has([class*="-drawer"]) .cs-account-chip,
+        body:has(.cs-lab-menu) .cs-account-chip {
+          display: none;
+        }
         .cs-account-chip > span {
           color: #59eba0;
           font-size: 9px;
